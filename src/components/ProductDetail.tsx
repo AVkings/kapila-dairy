@@ -1,10 +1,43 @@
-/* ── Kapila Dairy · product detail (shared-element transition) ────── */
+/* ── Kapila Dairy · product detail: heritage + craft + purity ──────── */
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Minus, Plus, Star, ShoppingBag, Zap } from "lucide-react";
+import { ArrowLeft, Leaf, Minus, Plus, ShieldCheck, Star, ShoppingBag, Zap } from "lucide-react";
 import { useStore } from "../lib/store";
 import { inr, type UnitOption } from "../lib/data";
 import { VegDot } from "./Products";
+
+/* rotating purity seal */
+function PuritySeal({ since }: { since: number }) {
+  return (
+    <div className="relative w-32 h-32 sm:w-40 sm:h-40 shrink-0">
+      <svg viewBox="0 0 120 120" className="w-full h-full animate-spin-slow" aria-hidden="true">
+        <defs>
+          <path id="sealcircle" d="M 60,60 m -44,0 a 44,44 0 1,1 88,0 a 44,44 0 1,1 -88,0" />
+        </defs>
+        <circle cx="60" cy="60" r="57" fill="#FF9933" />
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#FFFEF0" strokeWidth="1.2" strokeDasharray="3 4" />
+        <text fill="#3E2723" fontSize="10.5" fontWeight="800" letterSpacing="2.5">
+          <textPath href="#sealcircle">
+            100% SHUDDH · KAPILA DAIRY · NO PRESERVATIVES ·
+          </textPath>
+        </text>
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">
+        <div className="text-center leading-none">
+          <p className="font-display font-black text-espresso text-[26px]">{since}</p>
+          <p className="text-[8px] font-bold tracking-[0.3em] text-espresso/70 mt-1">SINCE</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const reveal = {
+  initial: { opacity: 0, y: 34 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-70px" },
+  transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
+};
 
 export default function ProductDetail({ id }: { id: string }) {
   const { products, addToCart, nav, toast } = useStore();
@@ -119,9 +152,7 @@ export default function ProductDetail({ id }: { id: string }) {
                 data-hover
               >
                 {u.label}
-                <span className={`ml-2 ${i === unitIdx ? "text-gold" : "text-saffron-deep"}`}>
-                  {inr(u.price)}
-                </span>
+                <span className={`ml-2 ${i === unitIdx ? "text-gold" : "text-saffron-deep"}`}>{inr(u.price)}</span>
               </motion.button>
             ))}
           </div>
@@ -191,6 +222,124 @@ export default function ProductDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      {/* ── VIRASAT · the heritage story ── */}
+      <motion.section
+        {...reveal}
+        className="mt-16 sm:mt-20 relative bg-espresso-deep text-cream rounded-[2rem] overflow-hidden p-8 sm:p-12"
+      >
+        <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-saffron/15 blur-3xl" />
+        <p
+          aria-hidden="true"
+          className="absolute -bottom-10 right-2 font-display font-black text-[9rem] leading-none text-stroke-cream opacity-[0.07] select-none pointer-events-none"
+        >
+          {p.hindi.slice(0, 2)}
+        </p>
+        <div className="relative flex flex-col sm:flex-row gap-8 sm:gap-12 items-start">
+          <PuritySeal since={p.since} />
+          <div className="max-w-2xl">
+            <p className="flex items-center gap-3 text-[11px] font-bold tracking-[0.3em] text-gold uppercase">
+              <span className="w-9 h-[2px] bg-gold inline-block" /> Virasat · {p.since} se
+            </p>
+            <h2 className="font-display font-black text-4xl sm:text-5xl leading-[1.02] mt-3">
+              Teen peedhi ki <span className="italic text-saffron">imaandari</span>
+            </h2>
+            <p className="mt-5 text-cream/80 text-[15px] sm:text-base leading-relaxed">{p.heritage}</p>
+            <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
+              {[
+                { k: `${new Date().getFullYear() - p.since}+`, v: "saal purani recipe" },
+                { k: "0", v: "preservatives, hamesha" },
+                { k: "100%", v: "haath ki banawat" },
+              ].map((s) => (
+                <div key={s.v}>
+                  <p className="font-display font-black text-3xl text-gold leading-none">{s.k}</p>
+                  <p className="text-[11px] font-bold tracking-wide text-cream/55 uppercase mt-1">{s.v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* ── KAISE BANTI HAI · craft timeline ── */}
+      <section className="mt-16 sm:mt-20">
+        <motion.div {...reveal}>
+          <p className="flex items-center gap-3 text-[12px] font-bold tracking-[0.3em] text-saffron-deep uppercase">
+            <span className="w-10 h-[2px] bg-saffron-deep inline-block" /> Karigari
+          </p>
+          <h2 className="mt-3 font-display font-black text-4xl sm:text-5xl text-espresso leading-[0.98]">
+            Kaise banti hai <span className="italic text-saffron-deep">yeh</span>
+          </h2>
+        </motion.div>
+
+        <div className="mt-9 relative">
+          <span className="absolute left-[21px] top-3 bottom-3 w-[2.5px] bg-gradient-to-b from-saffron via-gold-deep/60 to-transparent rounded-full" />
+          <ol className="space-y-5">
+            {p.craft.map((step, i) => (
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, x: -26 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ delay: i * 0.12, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                className="relative flex gap-5 items-start"
+              >
+                <span className="relative z-10 grid place-items-center w-11 h-11 rounded-full bg-espresso text-gold font-display font-black text-lg shadow-md ring-4 ring-cream shrink-0">
+                  {i + 1}
+                </span>
+                <div className="bg-white/70 border border-white rounded-2xl px-5 py-4 shadow-card flex-1 group hover:-translate-y-1 hover:shadow-lift transition-all">
+                  <p className="font-hand text-xl text-saffron-deep leading-none">
+                    {["Subah ka pehla kaam", "Beech ka sabra wala kaam", "Haath ki hunarmandi", "Aakhri nazaakat"][i] ??
+                      `Step ${i + 1}`}
+                  </p>
+                  <p className="font-semibold text-espresso/85 text-[15px] mt-1.5 leading-relaxed">{step}</p>
+                </div>
+              </motion.li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* ── SHUDDHTA KA VAADA · purity promises ── */}
+      <section className="mt-16 sm:mt-20">
+        <div className="grid md:grid-cols-[auto_1fr] gap-8 items-center">
+          <motion.div {...reveal}>
+            <p className="flex items-center gap-3 text-[12px] font-bold tracking-[0.3em] text-leaf uppercase">
+              <span className="w-10 h-[2px] bg-leaf inline-block" /> Vaada
+            </p>
+            <h2 className="mt-3 font-display font-black text-4xl sm:text-5xl text-espresso leading-[0.98]">
+              Shuddhta ka <span className="italic text-leaf">vaada</span>
+            </h2>
+            <p className="font-hand text-2xl text-espresso/60 mt-3">jo toota, woh dhaaba band!</p>
+          </motion.div>
+          <div className="flex flex-wrap gap-3">
+            {p.purity.map((pr, i) => (
+              <motion.span
+                key={pr}
+                initial={{ opacity: 0, scale: 0.7, y: 14 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.09, type: "spring", stiffness: 320, damping: 20 }}
+                whileHover={{ y: -4 }}
+                className="flex items-center gap-2 bg-white/80 border-[1.5px] border-leaf/35 text-espresso font-bold text-[14px] px-5 py-3 rounded-full shadow-sm hover:border-leaf hover:shadow-card transition-all"
+              >
+                <ShieldCheck size={17} className="text-leaf shrink-0" />
+                {pr}
+              </motion.span>
+            ))}
+            <motion.span
+              initial={{ opacity: 0, scale: 0.7 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: p.purity.length * 0.09, type: "spring", stiffness: 320, damping: 20 }}
+              whileHover={{ y: -4 }}
+              className="flex items-center gap-2 bg-leaf text-cream font-bold text-[14px] px-5 py-3 rounded-full shadow-card"
+            >
+              <Leaf size={16} /> Bina preservative — 1974 se
+            </motion.span>
+          </div>
+        </div>
+      </section>
+
       {/* related */}
       {related.length > 0 && (
         <div className="mt-16">
@@ -216,9 +365,7 @@ export default function ProductDetail({ id }: { id: string }) {
                 <div className="p-3.5 flex items-center justify-between gap-2">
                   <div>
                     <p className="font-display font-bold text-[15px] leading-tight">{r.name}</p>
-                    <p className="text-xs font-semibold text-espresso/55 mt-0.5">
-                      {inr(r.units[0].price)} se
-                    </p>
+                    <p className="text-xs font-semibold text-espresso/55 mt-0.5">{inr(r.units[0].price)} se</p>
                   </div>
                   <span className="grid place-items-center w-8 h-8 rounded-full bg-saffron/20 text-saffron-deep group-hover:bg-saffron group-hover:text-cream transition-colors shrink-0">
                     <Plus size={15} strokeWidth={3} />

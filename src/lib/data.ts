@@ -13,6 +13,14 @@ export interface Product {
   hindi: string;
   desc: string;
   story: string;
+  /** virasat — the long heritage / prestige paragraph */
+  heritage: string;
+  /** kaise banti hai — ordered craft steps */
+  craft: string[];
+  /** shuddhta ka vaada — purity promises */
+  purity: string[];
+  /** year the recipe joined the dhaaba */
+  since: number;
   category: Category;
   image: string;
   units: UnitOption[];
@@ -48,11 +56,14 @@ export interface Order {
   grainsEarned: number;
 }
 
+/** Logged-in customer (Supabase Auth + profiles table). */
 export interface Customer {
+  id: string; // auth uid (or "local-..." when Supabase is offline)
   name: string;
   phone: string;
-  points: number;
+  dane: number;
   joinedAt: string;
+  authed: boolean;
 }
 
 /* ── images ── */
@@ -84,6 +95,16 @@ export const CATALOG: Product[] = [
     hindi: "काजू कतली",
     desc: "Slow-cooked cashew fudge, finished with pure silver varq.",
     story: "Sirf Goan kaju, thoda sa cheeni, aur Dadi ji ki 50 saal purani technique. Har katli haath se belii jaati hai — machine ka koi kaam nahi.",
+    heritage:
+      "1982 mein Dadi Sushila ne pehli baar kaanch ke patthar pe katli beli thi. Unka kehna tha — kaju bolta hai, bas dheemi aanch chahiye. Aaj bhi har katli usi sang-e-marmar pe haath se kat-ti hai, aur shaadi ke dabbe mein pehli rakhi jaati hai.",
+    craft: [
+      "Konkan ke W-320 grade kaju raat bhar bhigote hain",
+      "Patli ek-taar chashni mein 40 minute dheema pakna",
+      "Sangmarmar ke patthar pe haath se belna aur kaatna",
+      "Upar chandi ka asli khaane layak varq",
+    ],
+    purity: ["100% kaju — maida zero", "Asli chandi ka varq", "Cheeni kam, kaju zyada", "Bina essence, bina rang"],
+    since: 1982,
     category: "sweets",
     image: IMG.kaju,
     units: [
@@ -101,6 +122,16 @@ export const CATALOG: Product[] = [
     hindi: "मोतीचूर लड्डू",
     desc: "Tiny boondi pearls bound in warm ghee — melts before you blink.",
     story: "Boondi ek-ek moti jaisi, desi ghee mein tala hua, aur pistachiyon ki chaadar. Shaadi ho ya tyohaar — Kapila ke laddoo pehle khatam hote hain.",
+    heritage:
+      "Yehi woh laddoo hai jisse dhaaba shuru hua — 1974 ki Diwali pe Dadaji ne poore mohalle ko khilaya tha. Boondi ka jhaara wahi purana peetal ka hai, teen peedhi se kaam kar raha hai aur aaj bhi roz subah garam-garam baandha jaata hai.",
+    craft: [
+      "Besan ko peetal ke jhaare se moti-moti boondi mein utaarte hain",
+      "Apne bilona ghee mein halki aanch pe sone jaisa talna",
+      "Ek-taar chashni mein boondi ko bhigona",
+      "Haath ki hatheli pe garam-garam laddoo baandhna",
+    ],
+    purity: ["Apna bilona desi ghee", "Kesar ka rang — food colour nahi", "Boondi moti, daant nahi lagti", "Roz subah taaza"],
+    since: 1974,
     category: "sweets",
     image: IMG.laddoo,
     units: [
@@ -118,6 +149,16 @@ export const CATALOG: Product[] = [
     hindi: "गुलाब जामुन",
     desc: "Khoya dumplings soaked overnight in rose-cardamom syrup.",
     story: "Khoya subah ka, syrup raat bhar ka. Jamun itna naram ki chammach ki zaroorat nahi — bas ek saans mein.",
+    heritage:
+      "Bade Papa 1980 mein Lucknow se khoya banane ki taleem le kar aaye the. Unhone kaha tha — jamun ka raaz syrup nahi, khoya hai. Isliye hamara khoya roz subah 40 litre doodh se taaza ghot-ta hai, raat bhar chashni mein sota hai.",
+    craft: [
+      "Subah ke doodh ka khoya haath se ghotna",
+      "Halki aanch pe sona-sa bhunna — jalna mana hai",
+      "Ungliyon se bina darar ke gol baandhna",
+      "Gulaab-e-sadab aur elaichi wali chashni mein raat bhar bhigona",
+    ],
+    purity: ["Asli khoya — powder nahi", "Gulaab ke phool ka arq", "Bina essence", "Raat bhar bhigona zaroori"],
+    since: 1980,
     category: "sweets",
     image: IMG.jamun,
     units: [
@@ -134,6 +175,16 @@ export const CATALOG: Product[] = [
     hindi: "जलेबी रबड़ी",
     desc: "Crackling saffron coils over chilled, thick-set rabri.",
     story: "Tave se seedha aapke dabbe tak — garam jalebi, thandi rabri. Yeh jodi 1974 se tooti nahi hai.",
+    heritage:
+      "Jalebi ki kadhai 1985 se usi angeethi pe hai — peetal ki, 20 kilo ki, aur ghee usi mein badla jaata hai jab khud Dadi kha kar dekhti hain. Rabri raat bhar angaare ki dheemi aanch pe jamti hai, isliye uski tahon mein subah ki taazgi hoti hai.",
+    craft: [
+      "Maida-kesar ka batter 8 ghante khatta hone dena",
+      "Peetal ki kadhai mein desi ghee pe gol-chakkar",
+      "Chashni mein 2 minute — zyada nahi, kam nahi",
+      "Rabri ki moti tah ke saath garama-garam parosna",
+    ],
+    purity: ["Desi ghee mein tali", "Asli kesar — peela rang usi ka", "Rabri angaare ki aanch ki", "Order pe tali jaati hai"],
+    since: 1985,
     category: "sweets",
     image: IMG.jalebi,
     units: [
@@ -151,6 +202,16 @@ export const CATALOG: Product[] = [
     hindi: "केसर पेड़ा",
     desc: "Mathura-style pedas perfumed with real Kashmiri kesar.",
     story: "Doodh subah 6 baje ka, kesar asli Kashmiri. Peda wahi hai jo prasad mein chadhe toh dil khush ho jaye.",
+    heritage:
+      "Mathura ke ek halwai gharane se 1978 mein yeh recipe hamare paas aayi — badle mein Dadaji ne unhein 12 kilo bilona ghee bheja tha, bas. Tab se har Shivratri pe yeh peda Mandir ke prasad mein jaata hai. Kesar wahi — Pampore, Kashmir ka, har saal same kisaan se.",
+    craft: [
+      "Khoya ko lohe ki kadhai mein 3 ghante dheema bhunna",
+      "Kesar ko garm doodh mein kholna, rang bhi wahi, khushboo bhi",
+      "Haath se gol peda baandhna, beech mein ungli ka nishaan",
+      "Raat bhar thanda karke agle din bechna — aaj ka peda aaj nahi",
+    ],
+    purity: ["Pampore ka asli kesar", "Lohe ki kadhai ka khoya", "Bina essence, bina rang", "Prasad wali shuddhta"],
+    since: 1978,
     category: "sweets",
     image: IMG.platter,
     units: [
@@ -167,6 +228,16 @@ export const CATALOG: Product[] = [
     hindi: "ताज़ा दूध",
     desc: "Farm-to-door A2 cow milk — bottled within 2 hours of milking.",
     story: "Hamari gaayein sirf A2. Doodh subah 4 baje nikalta hai, 6 baje bottle mein, 7 baje aapke dhaabe tak. Upar ki malai dekh kar hi dil khush.",
+    heritage:
+      "Dadaji Ramkishan ne 1974 mein yehi dhaaba 2 gaayon aur 1 cycle se shuru kiya tha. Aaj 40+ desi gaayein hain — Gir, Sahiwal aur Tharparkar — par subah 4 baje ki doh aaj bhi haath se hoti hai. Pehli doh ka pehla gilass aaj bhi Mandir chadhta hai.",
+    craft: [
+      "Subah 4 baje — har gaay ke naam se, haath se doh",
+      "Turant thanda karke 63°C pe dheema pasteurise",
+      "Bina homogenise kiye — malai upar khud jamti hai",
+      "Kaanch ki bottle mein, subah 7 baje se pehle aap tak",
+    ],
+    purity: ["100% A2 desi gaay", "No preservatives", "Paani nahi, powder nahi", "Sirf kaanch ki bottle"],
+    since: 1974,
     category: "dairy",
     image: IMG.milk,
     units: [
@@ -184,6 +255,16 @@ export const CATALOG: Product[] = [
     hindi: "मलाई पनीर",
     desc: "Same-day paneer, soft enough to crumble with a whisper.",
     story: "Sirf aaj ka doodh, sirf nimbu se phada hua. Kal ka paneer? Woh hamare yahan bikta hi nahi.",
+    heritage:
+      "1990 mein Chacha ji ne shaadi mein ek halwai se seekha tha ki paneer nimbu se phadho, sirke se nahi — aur dabaw sirf itna ki malai andar reh jaye. Aaj hamara paneer shehar ke 30 shaadi caterer maangte hain, par pehla hissa hamesha dhaabe ka hota hai.",
+    craft: [
+      "Subah ka taaza poore doodh ka doodh ubaalna",
+      "Sirf nimbu ke ras se phadna — sirka ghar mein mana hai",
+      "Musalmi kapde mein baandh kar sirf 20 minute dabana",
+      "Bina fridge ke, usi din bechna — kal ka kabhi nahi",
+    ],
+    purity: ["Aaj ke doodh ka, aaj ka", "Sirf nimbu se phada", "Malai andar, daant nahi lagta", "Kal ka paneer bikta nahi"],
+    since: 1990,
     category: "dairy",
     image: IMG.paneer,
     units: [
@@ -200,6 +281,16 @@ export const CATALOG: Product[] = [
     hindi: "देसी घी",
     desc: "28 litres of milk, hand-churned both ways — one litre of gold.",
     story: "Bilona method: malai jamao, mathna ghumao, dheemi aanch pe pakao. 28 litre doodh se 1 litre ghee. Daana-daana bolta hai.",
+    heritage:
+      "Dadi kehti thi — ghee mein jaldbaazi, ghar mein kangaali. Isliye hamara ghee aaj bhi bilona method se banta hai: dahi ka mathna dono taraf ghumao, makkhan nikalo, aur lakdi ki dheemi aanch pe pakao. 28 litre A2 doodh se sirf 1 litre. Daanedar, sone jaisa, teen peedhi ki mehnat.",
+    craft: [
+      "Poore doodh ka dahi mitti ki matki mein jamana",
+      "Lakdi ka mathna dono taraf se 40 minute ghumana",
+      "Makkhan ko lakdi ki aanch pe dheema-dheema pakana",
+      "Chhalni se chhaan kar mitti ke matke mein bharna",
+    ],
+    purity: ["28L doodh = 1L ghee", "A2 desi gaay ka", "Lakdi ki aanch, danedar", "Lab-tested, milawat zero"],
+    since: 1974,
     category: "dairy",
     image: IMG.ghee,
     units: [
@@ -216,6 +307,16 @@ export const CATALOG: Product[] = [
     hindi: "आलू समोसा",
     desc: "Coal-fire crispy shells, masaledar aloo, do chutney saath.",
     story: "Aata subah goonda, aloo bhaap ka, tel garam — aur samosa seedha tave se aapke haath tak. Hari aur imli chutney ghar ki bani.",
+    heritage:
+      "1988 mein railway station ke paas wale thele se Chacha ji ne samosa karna seekha — badle mein unhone 2 mahine free chai pilayi thi. Ajwain wala khamiri cover aur bhaap wale aloo ka raaz tab se hamare paas hai. Chai ke bina samosa, aur samose ke bina chai — dono mana hai.",
+    craft: [
+      "Subah ajwain ke saath atta goondna, 4 ghante rest",
+      "Aloo bhaap ke, haath se masalna — mixer mana hai",
+      "Kam aanch pe dheema talna — 2 baar, taki andar pakke",
+      "Ghar ki hari chutney aur imli chutney ke saath",
+    ],
+    purity: ["Channa nahi, vanaspati nahi", "Ajwain wala desi cover", "Aloo bhaap ka, masala ghar ka", "2 baar tali kurr-kurr"],
+    since: 1988,
     category: "snacks",
     image: IMG.samosa,
     units: [
@@ -233,6 +334,16 @@ export const CATALOG: Product[] = [
     hindi: "आम लस्सी",
     desc: "Hand-churned curd, Alphonso pulp, malai ka taaj.",
     story: "Dahi apni mathne ka, aam Ratnagiri ka Alphonso. Matki mein thandi ki hui — pehla ghoont aur din ban gaya.",
+    heritage:
+      "1992 ki garmi mein Dadi ne pehli matki lassi banayi thi — us saal aam itna achha tha ki cheeni ki zaroorat hi nahi padi. Tab se har garmi Ratnagiri se seedha Alphonso aata hai, aur lassi lakdi ke rai se mathi jaati hai. Mixer wali jhaag? Woh lassi nahi, natak hai.",
+    craft: [
+      "Poore doodh ki dahi mitti ki matki mein jamana",
+      "Lakdi ke rai se haath se mathna — 15 minute",
+      "Ratnagiri ka Alphonso guda, cheeni sirf zaroorat pe",
+      "Upar malai ka taaj aur pista ki chaadar",
+    ],
+    purity: ["Asli Alphonso — essence nahi", "Dahi poore doodh ki", "Barf nahi, matki ki thandak", "Malai upar se nahi, andar se"],
+    since: 1992,
     category: "drinks",
     image: IMG.lassi,
     units: [

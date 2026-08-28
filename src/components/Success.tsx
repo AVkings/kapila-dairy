@@ -164,10 +164,10 @@ export default function SuccessPage({ order }: { order: Order }) {
     };
   }, []);
 
-  const nextTier = customer ? REWARD_TIERS.find((t) => t.grains > customer.points) : undefined;
+  const nextTier = customer ? REWARD_TIERS.find((t) => t.grains > customer.dane) : undefined;
   const tierPct = customer
     ? nextTier
-      ? Math.min(100, Math.round((customer.points / nextTier.grains) * 100))
+      ? Math.min(100, Math.round((customer.dane / nextTier.grains) * 100))
       : 100
     : 0;
 
@@ -324,11 +324,11 @@ export default function SuccessPage({ order }: { order: Order }) {
                     <span className="font-display font-bold text-xl text-cream/80">dane is order se</span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-cream/65">
-                    Khate mein kul <b className="text-gold">{customer.points}</b> dane
+                    Khate mein kul <b className="text-gold">{customer.dane}</b> dane
                     {nextTier ? (
                       <>
                         {" "}
-                        — <b className="text-cream">{nextTier.grains - customer.points}</b> aur toh{" "}
+                        — <b className="text-cream">{nextTier.grains - customer.dane}</b> aur toh{" "}
                         <b className="text-gold">{nextTier.reward}</b> pakka!
                       </>
                     ) : (

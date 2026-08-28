@@ -1,5 +1,5 @@
-/* ── Kapila Dairy · navbar · cursor · toasts · fly-layer · footer ──── */
-import { useEffect, useState, type FormEvent } from "react";
+/* ── Kapila Dairy · navbar · cursor · toasts · fly-layer · login · footer */
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   AnimatePresence,
   motion,
@@ -7,7 +7,6 @@ import {
   useScroll,
   useMotionValueEvent,
   useSpring,
-  useTransform,
 } from "framer-motion";
 import {
   ShoppingBag,
@@ -18,23 +17,27 @@ import {
   ArrowRight,
   LogOut,
   User,
+  Mail,
+  Smartphone,
+  X,
 } from "lucide-react";
 import { useStore, type Fly } from "../lib/store";
 import { scrollToId } from "../lib/scroll";
 import { CATEGORIES } from "../lib/data";
+import {
+  getSessionCustomer,
+  loginWithEmail,
+  sendPhoneOtp,
+  supabaseReady,
+  verifyPhoneOtp,
+} from "../lib/supabase";
 
 /* ── logo ── */
 function DiyaMark({ className = "w-9 h-9" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none" aria-hidden="true">
-      <path
-        d="M24 4C24 4 9 21.5 9 30.5a15 15 0 0 0 30 0C39 21.5 24 4 24 4Z"
-        fill="#FF9933"
-      />
-      <path
-        d="M24 15c0 0-8.5 10-8.5 16a8.5 8.5 0 0 0 17 0C32.5 25 24 15 24 15Z"
-        fill="#FFFEF0"
-      />
+      <path d="M24 4C24 4 9 21.5 9 30.5a15 15 0 0 0 30 0C39 21.5 24 4 24 4Z" fill="#FF9933" />
+      <path d="M24 15c0 0-8.5 10-8.5 16a8.5 8.5 0 0 0 17 0C32.5 25 24 15 24 15Z" fill="#FFFEF0" />
       <circle cx="24" cy="32" r="3.4" fill="#E2670A" />
     </svg>
   );
@@ -83,6 +86,12 @@ export function Navbar() {
   useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 30));
 
   const count = cart.reduce((s, i) => s + i.qty, 0);
+  const initials = (customer?.name ?? "?")
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   const goSection = (target: string) => {
     setMenuOpen(false);
@@ -125,21 +134,34 @@ export function Navbar() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {customer ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => goSection("#rewards")}
-                  className="hidden sm:flex items-center gap-1.5 rounded-full bg-espresso text-gold pl-3 pr-3.5 h-10 text-sm font-bold hover:bg-espresso-deep transition-colors"
+                  className="flex items-center gap-2 rounded-full bg-espresso text-cream pl-1.5 pr-3.5 h-10 text-sm font-bold hover:bg-espresso-deep transition-colors"
                   data-hover
                   title="Sakhar ke dane"
                 >
-                  <Sparkles size={15} className="text-gold" />
-                  {customer.points}
-                  <span className="text-cream/55 font-medium text-[11px]">dane</span>
+                  <span className="grid place-items-center w-7 h-7 rounded-full bg-saffron text-espresso-deep text-[11px] font-black">
+                    {initials}
+                  </span>
+                  <span className="hidden sm:flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-gold" />
+                    <motion.span
+                      key={customer.dane}
+                      initial={{ scale: 0.4 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                      className="text-gold"
+                    >
+                      {customer.dane}
+                    </motion.span>
+                    <span className="text-cream/55 font-medium text-[11px]">dane</span>
+                  </span>
                 </button>
                 <button
                   onClick={() => {
                     logout();
-                    toast("Phir milenge, " + customer.name.split(" ")[0] + " ji!", "ok");
+                    toast(`Phir milenge, ${customer.name.split(" ")[0]} ji!`, "ok");
                   }}
                   className="hidden md:grid w-10 h-10 place-items-center rounded-full border border-espresso/25 text-espresso/70 hover:bg-espresso hover:text-cream transition-colors"
                   data-hover
@@ -240,7 +262,7 @@ export function Navbar() {
             >
               {customer ? (
                 <div className="flex items-center gap-2 text-gold font-bold">
-                  <Sparkles size={18} /> {customer.points} dane
+                  <Sparkles size={18} /> {customer.dane} dane
                 </div>
               ) : (
                 <button
@@ -368,9 +390,7 @@ export function Toasts() {
             exit={{ opacity: 0, y: 12, scale: 0.92 }}
             transition={{ type: "spring", stiffness: 380, damping: 26 }}
             className={`flex items-center gap-2.5 max-w-[320px] px-4 py-3 rounded-2xl shadow-lift text-sm font-semibold border-l-4 ${
-              t.tone === "ok"
-                ? "bg-espresso text-cream border-saffron"
-                : "bg-chili text-cream border-gold"
+              t.tone === "ok" ? "bg-espresso text-cream border-saffron" : "bg-chili text-cream border-gold"
             }`}
           >
             {t.tone === "ok" ? <Sparkles size={16} className="text-gold shrink-0" /> : null}
@@ -382,25 +402,154 @@ export function Toasts() {
   );
 }
 
-/* ── login modal ── */
+/* ── login modal · Supabase Auth (phone OTP + email) ── */
+type LoginTab = "phone" | "email";
+type PhoneStep = "details" | "otp";
+
+function OtpBoxes({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const digits = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
+
+  const setAt = (i: number, ch: string) => {
+    const d = ch.replace(/\D/g, "").slice(-1);
+    const next = digits.slice();
+    next[i] = d;
+    onChange(next.join(""));
+    if (d && i < 5) refs.current[i + 1]?.focus();
+  };
+
+  return (
+    <div className="flex gap-2 justify-between">
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
+          value={d}
+          inputMode="numeric"
+          onChange={(e) => setAt(i, e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" && !digits[i] && i > 0) refs.current[i - 1]?.focus();
+          }}
+          onPaste={(e) => {
+            const txt = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+            if (txt.length > 1) {
+              e.preventDefault();
+              onChange(txt);
+              refs.current[Math.min(txt.length, 5)]?.focus();
+            }
+          }}
+          className="w-full aspect-square max-w-[52px] text-center font-display font-black text-2xl rounded-xl border-[1.5px] border-espresso/25 bg-white/80 focus:border-saffron transition-colors"
+          aria-label={`OTP digit ${i + 1}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function LoginModal() {
-  const { loginOpen, setLoginOpen, login, toast } = useStore();
+  const { loginOpen, setLoginOpen, onAuthedCustomer, toast } = useStore();
+  const [tab, setTab] = useState<LoginTab>("phone");
+  const [step, setStep] = useState<PhoneStep>("details");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const submit = (e: FormEvent) => {
+  const reset = () => {
+    setStep("details");
+    setOtp("");
+    setErr("");
+    setBusy(false);
+  };
+  const close = () => {
+    setLoginOpen(false);
+    window.setTimeout(reset, 350);
+  };
+
+  const finish = async (typedName: string) => {
+    const c = await getSessionCustomer();
+    if (!c) {
+      setErr("Session nahi bana — dobara try karo.");
+      return;
+    }
+    const merged = { ...c, name: typedName.trim() || c.name };
+    const credited = onAuthedCustomer(merged);
+    close();
+    if (credited > 0) {
+      toast(`Khata khul gaya! Pehle ke +${credited} sakhar ke dane bhi jud gaye.`, "ok");
+    } else {
+      toast(`Namaste ${merged.name.split(" ")[0]} ji! Har ₹10 pe 1 dana milega.`, "ok");
+    }
+  };
+
+  const sendOtp = async (e: FormEvent) => {
     e.preventDefault();
     if (name.trim().length < 2) return setErr("Naam toh batao ji — kam se kam 2 akshar.");
     if (!/^\d{10}$/.test(phone)) return setErr("Phone 10 digit ka hona chahiye.");
-    const { credited, customer } = login(name.trim(), phone);
-    setLoginOpen(false);
-    setName("");
-    setPhone("");
+    if (!supabaseReady) return setErr("Supabase offline hai — thodi der mein try karo.");
     setErr("");
-    if (credited > 0) toast(`Welcome ${customer.name.split(" ")[0]}! +${credited} sakhar ke dane mile.`, "ok");
-    else toast(`Namaste ${customer.name.split(" ")[0]} ji! Khata khul gaya.`, "ok");
+    setBusy(true);
+    const res = await sendPhoneOtp(name.trim(), phone);
+    setBusy(false);
+    if (!res.ok) {
+      const m = (res.error ?? "").toLowerCase();
+      if (m.includes("sms") || m.includes("twilio") || m.includes("provider") || m.includes("messagebird")) {
+        setErr("SMS provider abhi setup nahi hai — dashboard mein test number add karo, ya Email tab se login karo.");
+      } else {
+        setErr("OTP nahi bhej paaye: " + (res.error ?? "kuch gadbad hai."));
+      }
+      return;
+    }
+    setStep("otp");
+    toast(`OTP ${phone} pe bhej diya — 6 ank daalo.`, "ok");
   };
+
+  const confirmOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 6) return setErr("Poora 6 ank ka OTP daalo.");
+    setErr("");
+    setBusy(true);
+    const res = await verifyPhoneOtp(phone, otp);
+    setBusy(false);
+    if (!res.ok) {
+      setErr("OTP galat hai ji — dobara dekho ya resending karo.");
+      return;
+    }
+    setBusy(true);
+    await finish(name);
+    setBusy(false);
+  };
+
+  const emailLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (name.trim().length < 2) return setErr("Naam toh batao ji.");
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Email sahi format mein likho.");
+    if (password.length < 6) return setErr("Password kam se kam 6 akshar ka rakho.");
+    if (!supabaseReady) return setErr("Supabase offline hai — thodi der mein try karo.");
+    setErr("");
+    setBusy(true);
+    const res = await loginWithEmail(name.trim(), email, password);
+    if (res.needsConfirm) {
+      setBusy(false);
+      setErr("Aapke email pe confirm link gaya hai — uspe click karke wapas login karo.");
+      return;
+    }
+    if (!res.ok) {
+      setBusy(false);
+      setErr(res.error ?? "Login nahi hua — dobara try karo.");
+      return;
+    }
+    await finish(name);
+    setBusy(false);
+  };
+
+  const inputCls =
+    "w-full h-12 px-4 rounded-xl border-[1.5px] border-espresso/20 bg-white/70 text-[15px] font-medium";
 
   return (
     <AnimatePresence>
@@ -410,58 +559,204 @@ export function LoginModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setLoginOpen(false)}
+            onClick={close}
             className="fixed inset-0 z-[80] bg-espresso-deep/60 backdrop-blur-sm"
           />
-          <div className="fixed inset-0 z-[81] grid place-items-center p-4 pointer-events-none">
-            <motion.form
-              onSubmit={submit}
+          <div className="fixed inset-0 z-[81] grid place-items-center p-4 pointer-events-none overflow-y-auto">
+            <motion.div
               initial={{ opacity: 0, scale: 0.85, y: 28 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 16 }}
               transition={{ type: "spring", stiffness: 320, damping: 26 }}
-              className="pointer-events-auto w-full max-w-sm bg-cream rounded-[1.6rem] p-7 shadow-lift border border-gold/40 relative overflow-hidden"
+              className="pointer-events-auto w-full max-w-sm bg-cream rounded-[1.6rem] p-6 sm:p-7 shadow-lift border border-gold/40 relative overflow-hidden my-8"
             >
               <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-saffron/20 blur-2xl" />
+              <button
+                onClick={close}
+                className="absolute top-4 right-4 w-9 h-9 grid place-items-center rounded-full border border-espresso/20 hover:bg-espresso hover:text-cream transition-colors"
+                data-hover
+                aria-label="Band karo"
+              >
+                <X size={16} />
+              </button>
+
               <div className="flex items-center gap-3 mb-1">
                 <DiyaMark className="w-10 h-10" />
                 <h3 className="font-display font-black text-3xl">Dhaabe ka Khata</h3>
               </div>
-              <p className="font-hand text-xl text-saffron-deep mb-5">
-                sirf naam + phone — password ki koi jhanjhat nahi
+              <p className="font-hand text-xl text-saffron-deep mb-4">
+                phone se pakka login — password ki jhanjhat nahi
               </p>
-              <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">
-                NAAM
-              </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Ramesh Gupta"
-                className="w-full h-12 px-4 rounded-xl border-[1.5px] border-espresso/20 bg-white/70 text-[15px] font-medium mb-4"
-              />
-              <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">
-                PHONE (10 digit)
-              </label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="98765 43210"
-                inputMode="numeric"
-                className="w-full h-12 px-4 rounded-xl border-[1.5px] border-espresso/20 bg-white/70 text-[15px] font-medium tracking-widest"
-              />
-              {err && <p className="text-chili text-xs font-semibold mt-2">{err}</p>}
-              <motion.button
-                whileTap={{ scale: 0.96 }}
-                type="submit"
-                className="mt-5 w-full h-13 py-3.5 rounded-xl bg-espresso text-cream font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-saffron-deep transition-colors"
-                data-hover
-              >
-                <Sparkles size={17} className="text-gold" /> Khata kholo — dane kamao
-              </motion.button>
-              <p className="text-[11px] text-espresso/50 text-center mt-3">
-                Har ₹10 pe 1 sakhar ka dana · 100 dane pe free doodh
-              </p>
-            </motion.form>
+
+              {/* tabs */}
+              <div className="relative grid grid-cols-2 bg-sand/70 rounded-full p-1 mb-5">
+                <motion.span
+                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-espresso shadow-md"
+                  animate={{ left: tab === "phone" ? 4 : "50%" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                />
+                <button
+                  onClick={() => {
+                    setTab("phone");
+                    setErr("");
+                  }}
+                  className={`relative z-10 h-9 rounded-full text-[13px] font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                    tab === "phone" ? "text-cream" : "text-espresso/60"
+                  }`}
+                  data-hover
+                >
+                  <Smartphone size={14} /> Phone OTP
+                </button>
+                <button
+                  onClick={() => {
+                    setTab("email");
+                    setErr("");
+                  }}
+                  className={`relative z-10 h-9 rounded-full text-[13px] font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                    tab === "email" ? "text-cream" : "text-espresso/60"
+                  }`}
+                  data-hover
+                >
+                  <Mail size={14} /> Email
+                </button>
+              </div>
+
+              <AnimatePresence mode="wait">
+                {tab === "phone" && step === "details" && (
+                  <motion.form
+                    key="phone-details"
+                    onSubmit={sendOtp}
+                    initial={{ opacity: 0, x: -14 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 14 }}
+                    transition={{ duration: 0.22 }}
+                  >
+                    <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">NAAM (ZAROORI)</label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Ramesh Gupta"
+                      className={inputCls + " mb-4"}
+                    />
+                    <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">PHONE (10 DIGIT)</label>
+                    <div className="flex gap-2 mb-1">
+                      <span className="grid place-items-center h-12 px-3 rounded-xl border-[1.5px] border-espresso/20 bg-sand/60 font-bold text-espresso/70 text-sm">
+                        +91
+                      </span>
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="98765 43210"
+                        inputMode="numeric"
+                        className={inputCls + " tracking-widest"}
+                      />
+                    </div>
+                    {err && <p className="text-chili text-xs font-semibold mt-2.5">{err}</p>}
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      type="submit"
+                      disabled={busy}
+                      className="mt-4 w-full py-3.5 rounded-xl bg-espresso text-cream font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-saffron-deep transition-colors disabled:opacity-60"
+                      data-hover
+                    >
+                      {busy ? (
+                        <>
+                          <span className="w-5 h-5 rounded-full border-2 border-cream/30 border-t-cream animate-spin" />
+                          OTP bheja ja raha…
+                        </>
+                      ) : (
+                        <>OTP bhejo <ArrowRight size={16} /></>
+                      )}
+                    </motion.button>
+                    <p className="text-[11px] text-espresso/50 text-center mt-3">
+                      Har ₹10 pe 1 sakhar ka dana · 100 dane pe free doodh
+                    </p>
+                  </motion.form>
+                )}
+
+                {tab === "phone" && step === "otp" && (
+                  <motion.form
+                    key="phone-otp"
+                    onSubmit={confirmOtp}
+                    initial={{ opacity: 0, x: 14 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -14 }}
+                    transition={{ duration: 0.22 }}
+                  >
+                    <p className="text-sm font-semibold text-espresso/75 mb-3">
+                      <b>{phone}</b> pe 6 ank ka OTP aaya hai — yahan daalo:
+                    </p>
+                    <OtpBoxes value={otp} onChange={(v) => { setOtp(v); setErr(""); }} />
+                    {err && <p className="text-chili text-xs font-semibold mt-2.5">{err}</p>}
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      type="submit"
+                      disabled={busy}
+                      className="mt-4 w-full py-3.5 rounded-xl bg-saffron-deep text-cream font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-espresso transition-colors disabled:opacity-60"
+                      data-hover
+                    >
+                      {busy ? "Khata khul raha…" : "Khata kholo"}
+                    </motion.button>
+                    <button
+                      type="button"
+                      onClick={() => setStep("details")}
+                      className="w-full mt-3 text-xs font-bold text-espresso/55 hover:text-saffron-deep transition-colors"
+                      data-hover
+                    >
+                      ← number badalna hai?
+                    </button>
+                  </motion.form>
+                )}
+
+                {tab === "email" && (
+                  <motion.form
+                    key="email"
+                    onSubmit={emailLogin}
+                    initial={{ opacity: 0, x: 14 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -14 }}
+                    transition={{ duration: 0.22 }}
+                  >
+                    <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">NAAM (ZAROORI)</label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Ramesh Gupta"
+                      className={inputCls + " mb-4"}
+                    />
+                    <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">EMAIL</label>
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ramesh@example.com"
+                      type="email"
+                      className={inputCls + " mb-4"}
+                    />
+                    <label className="block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5">PASSWORD (6+ AKSHAR)</label>
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      type="password"
+                      className={inputCls}
+                    />
+                    {err && <p className="text-chili text-xs font-semibold mt-2.5">{err}</p>}
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      type="submit"
+                      disabled={busy}
+                      className="mt-4 w-full py-3.5 rounded-xl bg-espresso text-cream font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-saffron-deep transition-colors disabled:opacity-60"
+                      data-hover
+                    >
+                      {busy ? "Check ho raha…" : "Login / Khata kholo"}
+                    </motion.button>
+                    <p className="text-[11px] text-espresso/50 text-center mt-3">
+                      Naye ho? Same form se khata khud khul jayega.
+                    </p>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
         </>
       )}
@@ -499,10 +794,7 @@ export function Footer() {
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               {["A2 Doodh", "Bilona Ghee", "Halwai Mithai", "Matki Lassi"].map((b) => (
-                <span
-                  key={b}
-                  className="px-3 py-1.5 rounded-full border border-cream/20 text-xs font-semibold text-cream/75"
-                >
+                <span key={b} className="px-3 py-1.5 rounded-full border border-cream/20 text-xs font-semibold text-cream/75">
                   {b}
                 </span>
               ))}

@@ -14,7 +14,7 @@ const STEPS = [
 
 export default function Rewards() {
   const { customer, setLoginOpen } = useStore();
-  const points = customer?.points ?? 0;
+  const points = customer?.dane ?? 0;
   const nextTier = REWARD_TIERS.find((t) => t.grains > points);
   const barPct = Math.min(100, Math.round((points / 1000) * 100));
 
@@ -45,8 +45,8 @@ export default function Rewards() {
             </h2>
             <p className="mt-5 max-w-lg text-cream/70 text-[15px] leading-relaxed font-medium">
               Har <b className="text-gold">₹10</b> ki khareedari pe <b className="text-gold">1 sakhar ka dana</b>.
-              Dane jama karo, aur jab ginni puri ho jaye — counter pe dikhao aur inaam uthao.
-              Dadaji ke zamane ka hisaab, aaj ke zamane ka QR.
+              Khata phone OTP se khulta hai — naam aur number bas. Dane jama karo, aur jab ginni
+              puri ho jaye, counter pe QR dikhao aur inaam uthao.
             </p>
 
             {/* steps */}

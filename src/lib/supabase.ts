@@ -1,4 +1,4 @@
-/* ── Kapila Dairy · Supabase layer (safe, always falls back) ───────── */
+/* ── Kapila Dairy · Supabase layer (auth + profiles + orders) ──────── */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Customer, Order, Product } from "./data";
 import { CATALOG } from "./data";
@@ -9,29 +9,198 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 export const supabase: SupabaseClient | null =
   url && anonKey ? createClient(url, anonKey) : null;
 
-/** Pull live products from the `products` table; fall back to the built-in catalogue. */
+export const supabaseReady = !!supabase;
+
+/* ── helpers ── */
+const toE164 = (phone10: string) =>
+  phone10.startsWith("+") ? phone10 : `+91${phone10.replace(/\D/g, "")}`;
+
+export interface ProfileRow {
+  id: string;
+  name: string;
+  phone: string | null;
+  dane: number;
+  created_at: string;
+}
+
+export const profileToCustomer = (row: ProfileRow): Customer => ({
+  id: row.id,
+  name: row.name || "Kapila Guest",
+  phone: (row.phone ?? "").replace(/^\+91/, ""),
+  dane: row.dane ?? 0,
+  joinedAt: row.created_at,
+  authed: true,
+});
+
+/* ── AUTH · phone OTP ──────────────────────────────────────────────── */
+
+/** Step 1 — send OTP to phone. Creates the user if new (with naam). */
+export async function sendPhoneOtp(
+  name: string,
+  phone10: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: "offline" };
+  const { error } = await supabase.auth.signInWithOtp({
+    phone: toE164(phone10),
+    options: {
+      shouldCreateUser: true,
+      data: { full_name: name, phone: phone10 },
+    },
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Step 2 — verify the 6-digit OTP. */
+export async function verifyPhoneOtp(
+  phone10: string,
+  token: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: "offline" };
+  const { error } = await supabase.auth.verifyOtp({
+    phone: toE164(phone10),
+    token,
+    type: "sms",
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/* ── AUTH · email (fallback / demo) ────────────────────────────────── */
+export async function loginWithEmail(
+  name: string,
+  email: string,
+  password: string
+): Promise<{ ok: boolean; error?: string; needsConfirm?: boolean }> {
+  if (!supabase) return { ok: false, error: "offline" };
+
+  // try existing account first
+  const signIn = await supabase.auth.signInWithPassword({ email, password });
+  if (!signIn.error) return { ok: true };
+
+  const msg = signIn.error.message.toLowerCase();
+  if (msg.includes("invalid login") || msg.includes("not found") || msg.includes("invalid credentials")) {
+    const up = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+    if (up.error) return { ok: false, error: up.error.message };
+    if (up.data.session) return { ok: true };
+    return { ok: false, needsConfirm: true };
+  }
+  return { ok: false, error: signIn.error.message };
+}
+
+export async function signOutUser(): Promise<void> {
+  if (!supabase) return;
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Current logged-in customer (from profiles table). */
+export async function getSessionCustomer(): Promise<Customer | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+    if (!user) return null;
+
+    let { data: row } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!row) {
+      // trigger may not have fired yet (or table is fresh) — create it
+      const fallback: ProfileRow = {
+        id: user.id,
+        name: (user.user_metadata?.full_name as string) || "Kapila Guest",
+        phone: user.phone || (user.user_metadata?.phone as string) || "",
+        dane: 0,
+        created_at: new Date().toISOString(),
+      };
+      await supabase.from("profiles").upsert(
+        { id: fallback.id, name: fallback.name, phone: fallback.phone },
+        { onConflict: "id" }
+      );
+      row = fallback;
+    }
+    return profileToCustomer(row as ProfileRow);
+  } catch {
+    return null;
+  }
+}
+
+/** Keep the profile's name in sync (e.g. guest pending-credit login). */
+export async function ensureProfileName(uid: string, name: string): Promise<void> {
+  if (!supabase || !name) return;
+  try {
+    await supabase.from("profiles").update({ name }).eq("id", uid);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Add dane via the safe server-side RPC (client can't fake the total). */
+export async function creditDaneRemote(amount: number): Promise<number | null> {
+  if (!supabase || amount <= 0) return null;
+  try {
+    const { data, error } = await supabase.rpc("add_dane", { p_amount: amount });
+    if (error) return null;
+    return typeof data === "number" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/* ── PRODUCTS / ORDERS ─────────────────────────────────────────────── */
+
+/** Pull live products; fall back to the built-in catalogue. */
 export async function fetchProducts(): Promise<Product[]> {
   if (!supabase) return CATALOG;
   try {
-    const { data, error } = await supabase.from("products").select("*");
+    const { data, error } = await supabase.from("products").select("*").order("sort");
     if (error || !data || data.length === 0) return CATALOG;
-    const valid = (data as Product[]).filter(
+    const valid = (data as Array<Partial<Product> & { "desc"?: string }>).filter(
       (p) => p && p.id && p.name && Array.isArray(p.units) && p.image
     );
-    return valid.length ? valid : CATALOG;
+    const mapped: Product[] = valid.map((p) => ({
+      id: p.id as string,
+      name: p.name as string,
+      hindi: p.hindi ?? "",
+      desc: (p as { desc?: string }).desc ?? (p as { "desc"?: string })["desc"] ?? "",
+      story: p.story ?? "",
+      heritage: p.heritage ?? p.story ?? "",
+      craft: Array.isArray(p.craft) ? (p.craft as string[]) : [],
+      purity: Array.isArray(p.purity) ? (p.purity as string[]) : [],
+      since: typeof p.since === "number" ? p.since : 1974,
+      category: (p.category as Product["category"]) ?? "sweets",
+      image: p.image as string,
+      units: p.units as Product["units"],
+      tag: p.tag ?? undefined,
+      rating: Number(p.rating ?? 4.6),
+      reviews: Number(p.reviews ?? 0),
+    }));
+    return mapped.length ? mapped : CATALOG;
   } catch {
     return CATALOG;
   }
 }
 
-/** Persist an order to the `orders` table. Never throws. */
-export async function saveOrderRemote(order: Order): Promise<boolean> {
+/** Persist an order (with optional logged-in user_id). Never throws. */
+export async function saveOrderRemote(order: Order, userId?: string | null): Promise<boolean> {
   if (!supabase) return false;
   try {
     const { error } = await supabase.from("orders").insert({
       order_id: order.id,
       customer_name: order.customerName,
       phone: order.phone,
+      user_id: userId ?? null,
       pickup: order.pickup,
       note: order.note ?? null,
       payment: order.payment,
@@ -51,23 +220,5 @@ export async function saveOrderRemote(order: Order): Promise<boolean> {
     return !error;
   } catch {
     return false;
-  }
-}
-
-/** Sync a loyalty customer to the `customers` table. Never throws. */
-export async function upsertCustomerRemote(c: Customer): Promise<void> {
-  if (!supabase) return;
-  try {
-    await supabase.from("customers").upsert(
-      {
-        phone: c.phone,
-        name: c.name,
-        points: c.points,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "phone" }
-    );
-  } catch {
-    /* offline-first: local copy already saved */
   }
 }
