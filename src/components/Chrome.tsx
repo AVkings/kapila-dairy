@@ -17,6 +17,7 @@ import {
   ArrowRight,
   LogOut,
   User,
+  Lock,
   X,
 } from "lucide-react";
 import { useStore, type Fly } from "../lib/store";
@@ -686,8 +687,15 @@ export function Footer() {
               {live ? "SUPABASE LIVE" : "OFFLINE DAFTAR"}
             </span>
           </div>
-          <p className="font-hand text-lg text-cream/60">admin counter panel — jald aa raha hai</p>
+          <p className="font-hand text-lg text-cream/60">teen peedhi ka bharosa</p>
         </div>
+        <a
+          href="#/admin"
+          className="mx-auto mt-4 flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.22em] uppercase text-cream/30 hover:text-led transition-colors w-max"
+          title="Staff counter terminal"
+        >
+          <Lock size={11} /> Staff counter
+        </a>
       </div>
       <p
         aria-hidden="true"

@@ -18,6 +18,13 @@
   --font-display: "Playfair Display", Georgia, serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-hand: "Caveat", cursive;
+  --font-mono: "Space Mono", ui-monospace, "Courier New", monospace;
+
+  /* ── counter-terminal dark ── */
+  --color-coal: #14100c;
+  --color-coal-2: #1d1712;
+  --color-coal-3: #262019;
+  --color-led: #ffc24b;
 
   /* ── Motion tokens ── */
   --animate-float-a: float-a 7s ease-in-out infinite;
@@ -152,4 +159,51 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   .animate-spin-slow, .animate-steam, .animate-wiggle, .noise-layer {
     animation: none !important;
   }
+}
+
+/* ══ ADMIN · counter terminal ══ */
+.admin-shell {
+  background:
+    radial-gradient(1000px 500px at 80% -10%, rgba(255, 153, 51, 0.07), transparent 60%),
+    radial-gradient(800px 500px at 0% 110%, rgba(255, 215, 0, 0.05), transparent 55%),
+    var(--color-coal);
+}
+.scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.022) 0px,
+    rgba(255, 255, 255, 0.022) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 1;
+}
+.led {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.ticket-notch {
+  -webkit-mask:
+    radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+          mask:
+    radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+}
+.stamp {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border: 2.5px solid currentColor;
+  border-radius: 6px;
+  padding: 2px 10px;
+  transform: rotate(-6deg);
+  opacity: 0.9;
+  mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgba(0,0,0,0.75));
 }

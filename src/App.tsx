@@ -1,5 +1,5 @@
 /* ── Kapila Dairy · app shell: Lenis + GSAP + page transitions ─────── */
-import { useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Lenis from "lenis";
 import gsap from "gsap";
@@ -21,8 +21,30 @@ import {
   FlyLayer,
   LoginModal,
 } from "./components/Chrome";
+import AdminApp from "./admin/AdminApp";
 
 gsap.registerPlugin(ScrollTrigger);
+
+/* ── admin route detection (works on any static host) ── */
+function detectAdmin(): boolean {
+  const p = window.location.pathname.replace(/\/+$/, "");
+  const h = window.location.hash;
+  return p === "/admin" || h === "#/admin" || h.startsWith("#/admin/");
+}
+function useIsAdminRoute(): boolean {
+  const [admin, setAdmin] = useState(() => detectAdmin());
+  useEffect(() => {
+    /* typing …/admin normalizes to …/#/admin so refreshes keep working */
+    if (window.location.pathname.replace(/\/+$/, "") === "/admin" && !window.location.hash.startsWith("#/admin")) {
+      window.history.replaceState(null, "", window.location.pathname + "#/admin");
+    }
+    const onChange = () => setAdmin(detectAdmin());
+    window.addEventListener("hashchange", onChange);
+    setAdmin(detectAdmin());
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
+  return admin;
+}
 
 function Shell() {
   const { view } = useStore();
@@ -102,6 +124,8 @@ function Shell() {
 }
 
 export default function App() {
+  const isAdmin = useIsAdminRoute();
+  if (isAdmin) return <AdminApp />;
   return (
     <StoreProvider>
       <Shell />
