@@ -17,7 +17,7 @@ export interface RazorpayResult {
   reason?: string;
 }
 
-/** Opens the Razorpay Standard Checkout. Resolves (never throws). */
+/** Opens Razorpay Standard Checkout (desktop shows QR, mobile shows UPI/apps). Resolves, never throws. */
 export function payWithRazorpay(opts: {
   amount: number; // rupees
   orderId: string;
@@ -25,14 +25,8 @@ export function payWithRazorpay(opts: {
   phone: string;
 }): Promise<RazorpayResult> {
   return new Promise((resolve) => {
-    if (!RAZORPAY_KEY) {
-      resolve({ ok: false, reason: "no-key" });
-      return;
-    }
-    if (typeof window.Razorpay !== "function") {
-      resolve({ ok: false, reason: "sdk-not-loaded" });
-      return;
-    }
+    if (!RAZORPAY_KEY) { resolve({ ok: false, reason: "no-key" }); return; }
+    if (typeof window.Razorpay !== "function") { resolve({ ok: false, reason: "sdk-not-loaded" }); return; }
     try {
       const rzp = new window.Razorpay({
         key: RAZORPAY_KEY,
@@ -40,12 +34,10 @@ export function payWithRazorpay(opts: {
         currency: "INR",
         name: "Kapila Dairy",
         description: `Order ${opts.orderId}`,
-        prefill: { name: opts.name, contact: opts.phone },
-        notes: { shop_order_id: opts.orderId },
+        prefill: { name: opts.name, contact: opts.phone.replace(/\D/g, "").slice(-10) },
+        notes: { shop_order_id: opts.orderId, order_id: opts.orderId },
         theme: { color: "#FF9933", backdrop_color: "rgba(36,20,16,0.72)" },
-        modal: {
-          ondismiss: () => resolve({ ok: false, reason: "dismissed" }),
-        },
+        modal: { ondismiss: () => resolve({ ok: false, reason: "dismissed" }) },
         handler: (res: { razorpay_payment_id: string }) =>
           resolve({ ok: true, paymentId: res.razorpay_payment_id }),
       });

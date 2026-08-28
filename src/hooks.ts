@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMotionValue, useSpring, type MotionValue } from "framer-motion";
 
-/** viewport < bp */
 export function useIsMobile(bp = 768): boolean {
   const [mobile, setMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < bp
@@ -19,9 +18,7 @@ export function useIsMobile(bp = 768): boolean {
 
 export function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -33,10 +30,8 @@ export function usePrefersReducedMotion(): boolean {
 }
 
 /** Magnetic pull — element chases the cursor with spring physics. */
-export function useMagnetic<T extends HTMLElement>(
-  strength = 0.35
-): { ref: React.MutableRefObject<T | null>; x: MotionValue<number>; y: MotionValue<number> } {
-  const ref = useRef<T>(null);
+export function useMagnetic<T extends HTMLElement>(strength = 0.35) {
+  const ref = useRef<T | null>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const sx = useSpring(x, { stiffness: 190, damping: 14, mass: 0.45 });
@@ -50,10 +45,7 @@ export function useMagnetic<T extends HTMLElement>(
       x.set((e.clientX - (r.left + r.width / 2)) * strength);
       y.set((e.clientY - (r.top + r.height / 2)) * strength);
     };
-    const leave = () => {
-      x.set(0);
-      y.set(0);
-    };
+    const leave = () => { x.set(0); y.set(0); };
     el.addEventListener("mousemove", move);
     el.addEventListener("mouseleave", leave);
     return () => {
@@ -62,10 +54,9 @@ export function useMagnetic<T extends HTMLElement>(
     };
   }, [strength, x, y]);
 
-  return { ref, x: sx, y: sy };
+  return { ref, x: sx, y: sy } as { ref: React.MutableRefObject<T | null>; x: MotionValue<number>; y: MotionValue<number> };
 }
 
-/** Mouse parallax in [-1, 1] for floating layers. */
 export function useMouseParallax() {
   const mx = useMotionValue(0);
   const my = useMotionValue(0);

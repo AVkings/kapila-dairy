@@ -1,17 +1,14 @@
--- ════════════════════════════════════════════════════════════════════
+/* ── Kapila Dairy · full Supabase schema, embedded for the copy button ──
+   Source of truth: supabase/kapila_FULL.sql (same content). Embedded here
+   because some static hosts refuse to serve .sql files at runtime. */
+
+export const FULL_SQL = `-- ════════════════════════════════════════════════════════════════════
 --  KAPILA DAIRY · Supabase FULL SCHEMA (v3)
 --  Dashboard → SQL Editor → New query → paste ALL → Run
---  Idempotent: re-run safe. Yeh purane v1/v2 tables & functions ko
---  hata kar clean secure system banata hai.
---
---  SECURITY (demo phase):
---  admin_* functions `security definer` hain aur anon key se callable
---  hain kyunki admin panel abhi browser mein chalta hai (client-side
---  login + 3-try lockout se gated). LIVE se pehle inhe service-role
---  key se server-side call karo.
+--  Idempotent: re-run safe.
 -- ════════════════════════════════════════════════════════════════════
 
--- ── STEP 0 · PURANA SYSTEM HATAO (safe even if nothing exists) ──────
+-- ── STEP 0 · PURANA SYSTEM HATAO ─────────────────────────────────────
 drop table if exists public.customers cascade;
 drop view  if exists public.kapila_daily_revenue;
 drop trigger if exists on_auth_user_created on auth.users;
@@ -65,7 +62,7 @@ drop policy if exists "products_public_read" on public.products;
 create policy "products_public_read" on public.products
   for select using (is_active = true);
 
--- ── STEP 2 · PROFILES (auth se judi — signup pe auto-banti hai) ─────
+-- ── STEP 2 · PROFILES ───────────────────────────────────────────────
 create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   name        text not null default 'Kapila Guest',
@@ -79,16 +76,13 @@ alter table public.profiles enable row level security;
 drop policy if exists "profile_read_own" on public.profiles;
 create policy "profile_read_own" on public.profiles
   for select using (auth.uid() = id);
-
 drop policy if exists "profile_update_own" on public.profiles;
 create policy "profile_update_own" on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
-
 drop policy if exists "profile_insert_own" on public.profiles;
 create policy "profile_insert_own" on public.profiles
   for insert with check (auth.uid() = id);
 
--- trigger: naya user signup karte hi profile banao
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
@@ -106,7 +100,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ── STEP 3 · CUSTOMER RPCs (secure, apna khata) ─────────────────────
+-- ── STEP 3 · CUSTOMER RPCs ──────────────────────────────────────────
 create or replace function public.add_dane(amount integer)
 returns integer language plpgsql security definer set search_path = public as $$
 declare new_total integer;
@@ -177,10 +171,10 @@ returns text language sql immutable as $$
     case when length(digits) = 12 and digits like '91%' then substr(digits, 3) else digits end,
     '^0+', ''
   )
-  from (select regexp_replace(coalesce(t, ''), '\D', '', 'g') as digits) d;
+  from (select regexp_replace(coalesce(t, ''), '\\D', '', 'g') as digits) d;
 $$;
 
--- ── STEP 6 · ADMIN COUNTER RPCs (security definer) ─────────────────
+-- ── STEP 6 · ADMIN COUNTER RPCs ─────────────────────────────────────
 create or replace function public.admin_find_customer(p_phone text)
 returns table (id uuid, name text, phone text, dane integer, created_at timestamptz)
 language plpgsql security definer set search_path = public as $$
@@ -219,7 +213,6 @@ begin
   return new_total;
 end; $$;
 
--- counter se naya customer banao (khata kholo)
 create or replace function public.admin_create_customer(p_name text, p_phone text, p_dane integer default 0)
 returns table (id uuid, name text, phone text, dane integer, created_at timestamptz)
 language plpgsql security definer set search_path = public as $$
@@ -228,7 +221,6 @@ begin
   if p_name is null or length(trim(p_name)) < 2 then raise exception 'Naam toh do ji.'; end if;
   if public.norm_phone(p_phone) !~ '^[0-9]{10}$' then raise exception 'Phone 10 digit ka hona chahiye.'; end if;
 
-  -- agar is phone pe khata pehle se hai, wapas wahi do
   select pr.id into new_id from public.profiles pr
    where public.norm_phone(pr.phone) = public.norm_phone(p_phone) limit 1;
 
@@ -281,7 +273,6 @@ begin
     (p_order_id, null, cust, p_name, p_phone, p_pickup, p_payment,
      p_paid, p_total, coalesce(p_grains, 0), p_items,
      case when p_paid then 'ready' else 'placed' end);
-  -- walk-in customer ke khate mein dane bhi jod do
   if cust is not null and coalesce(p_grains,0) > 0 then
     update public.profiles set dane = dane + p_grains, updated_at = now() where id = cust;
   end if;
@@ -338,7 +329,7 @@ begin
   update public.products set is_active = p_active where id = p_id;
 end; $$;
 
--- ── STEP 7 · PAYMENT LINK FLOW (Razorpay exact-amount) ─────────────
+-- ── STEP 7 · PAYMENT LINK FLOW ──────────────────────────────────────
 create or replace function public.get_pay_order(p_order text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare out jsonb;
@@ -406,7 +397,7 @@ grant execute on function public.admin_toggle_product(text, boolean) to anon, au
 grant execute on function public.get_pay_order(text) to anon, authenticated;
 grant execute on function public.confirm_online_payment(text, text) to anon, authenticated;
 
--- ── STEP 11 · SEED DATA (3 sample products) ─────────────────────────
+-- ── STEP 11 · SEED DATA ─────────────────────────────────────────────
 insert into public.products
   (id, name, hindi, category, "desc", story, heritage, craft, purity, since,
    image, tag, rating, reviews, units, sort)
@@ -415,7 +406,7 @@ values
   'kaju-katli', 'Kaju Katli', 'काजू कतली', 'sweets',
   'Slow-cooked cashew fudge, finished with pure silver varq.',
   'Sirf Goan kaju, thoda sa cheeni, aur Dadi ji ki 50 saal purani technique. Har katli haath se beli jaati hai.',
-  '1982 mein Dadi Sushila ne pehli baar sang-e-marmar pe katli beli thi. Aaj bhi har katli usi patthar pe haath se kat-ti hai, aur shaadi ke dabbe mein pehli rakhi jaati hai.',
+  '1982 mein Dadi Sushila ne pehli baar sang-e-marmar pe katli beli thi. Aaj bhi har katli usi patthar pe haath se kat-ti hai.',
   '["Konkan ke W-320 grade kaju raat bhar bhigote hain","Patli ek-taar chashni mein 40 minute dheema pakna","Sangmarmar ke patthar pe haath se belna aur kaatna","Upar chandi ka asli khaane layak varq"]'::jsonb,
   '["100% kaju — maida zero","Asli chandi ka varq","Cheeni kam, kaju zyada","Bina essence, bina rang"]'::jsonb,
   1982,
@@ -453,3 +444,4 @@ on conflict (id) do nothing;
 --  Test:  select * from public.admin_daily_stats(7);
 --         select public.admin_create_customer('Test Ji', '9999999999', 10);
 -- ════════════════════════════════════════════════════════════════════
+`;

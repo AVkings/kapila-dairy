@@ -1,309 +1,193 @@
-/* ── Kapila Counter · admin shell + terminal login ─────────────────── */
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+/* ── Kapila Counter · admin terminal (login + shell + tabs) ───────── */
+import { useEffect, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  LayoutDashboard,
-  ScanLine,
-  Receipt,
-  Users,
-  Package,
-  LogOut,
-  Lock,
-  ShieldAlert,
-  ExternalLink,
+  LayoutDashboard, ScanLine, Receipt, Users, Package, LogOut, Copy, Check, Store,
+  Lock, Database, AlertTriangle,
 } from "lucide-react";
 import {
-  attemptLogin,
-  endAdminSession,
-  isAdminSession,
-  lockRemainingMs,
-  MAX_ATTEMPTS,
+  attemptLogin, endAdminSession, isAdminSession, lockRemainingMs, MAX_ATTEMPTS,
 } from "../lib/admin";
+import { FULL_SQL } from "../lib/sqlText";
 import { AdminHome } from "./AdminHome";
 import { AdminScan } from "./AdminScan";
-import { AdminOrders } from "./AdminOrders";
-import { AdminCustomers } from "./AdminCustomers";
-import { AdminProducts } from "./AdminProducts";
+import { AdminOrders, AdminCustomers, AdminProducts } from "./AdminPanels";
 
-export type AdminTab = "home" | "scan" | "orders" | "customers" | "products";
+export type AdminTab = "dashboard" | "scan" | "orders" | "customers" | "products";
 
 const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard; hint: string }[] = [
-  { id: "home", label: "Dashboard", icon: LayoutDashboard, hint: "aaj ka hisaab" },
-  { id: "scan", label: "Scan & Collect", icon: ScanLine, hint: "ticket → payment" },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, hint: "revenue & stats" },
+  { id: "scan", label: "Scan & Collect", icon: ScanLine, hint: "ticket + payment" },
   { id: "orders", label: "New Order", icon: Receipt, hint: "counter se banao" },
-  { id: "customers", label: "Dane Khata", icon: Users, hint: "balance · redeem" },
-  { id: "products", label: "Inventory", icon: Package, hint: "mithai · price" },
+  { id: "customers", label: "Dane Khata", icon: Users, hint: "balance & inaam" },
+  { id: "products", label: "Inventory", icon: Package, hint: "mithai ki tijori" },
 ];
 
-function DiyaMark({ className = "w-9 h-9" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} fill="none" aria-hidden="true">
-      <path d="M24 4C24 4 9 21.5 9 30.5a15 15 0 0 0 30 0C39 21.5 24 4 24 4Z" fill="#FF9933" />
-      <path d="M24 15c0 0-8.5 10-8.5 16a8.5 8.5 0 0 0 17 0C32.5 25 24 15 24 15Z" fill="#14100c" />
-      <circle cx="24" cy="32" r="3.4" fill="#FFC24B" />
-    </svg>
-  );
-}
-
-/* ── login terminal ── */
-function Login({ onSuccess }: { onSuccess: () => void }) {
+function LoginGate({ onIn }: { onIn: () => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
-  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
-  const [lockMs, setLockMs] = useState<number>(() => lockRemainingMs());
-  const [shake, setShake] = useState(0);
+  const [lockedMs, setLockedMs] = useState(() => lockRemainingMs());
+  const [copied, setCopied] = useState(false);
 
-  /* tick down the lockout clock */
   useEffect(() => {
-    if (lockMs <= 0) return;
-    const t = window.setInterval(() => {
-      const r = lockRemainingMs();
-      setLockMs(r);
-      if (r <= 0) setErr("");
-    }, 1000);
-    return () => window.clearInterval(t);
-  }, [lockMs]);
-
-  const locked = lockMs > 0;
-  const lockMin = Math.ceil(lockMs / 60000);
+    const iv = window.setInterval(() => setLockedMs(lockRemainingMs()), 1000);
+    return () => window.clearInterval(iv);
+  }, []);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (locked) return;
     const res = attemptLogin(user, pass);
-    if (res.ok) {
-      onSuccess();
-      return;
-    }
-    setShake((s) => s + 1);
-    if (res.lockedMs) {
-      setLockMs(res.lockedMs);
-      setAttemptsLeft(null);
-      setErr("");
-    } else {
-      setAttemptsLeft(res.attemptsLeft ?? 0);
-      setErr("Username ya password galat hai.");
-    }
+    if (res.ok) { onIn(); return; }
+    if (res.lockedMs) { setLockedMs(res.lockedMs); setErr(""); return; }
+    setErr(`Galat user ya password. ${res.attemptsLeft ?? 0} koshish bachi hai.`);
   };
 
-  const inputCls =
-    "led w-full h-12 px-4 rounded-lg bg-coal-3 border border-cream/12 text-cream placeholder:text-cream/25 focus:border-led focus:shadow-[0_0_0_3px_rgba(255,194,75,0.15)] transition-all text-[15px]";
+  const copySql = async () => {
+    try {
+      await navigator.clipboard.writeText(FULL_SQL);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2200);
+    } catch { setErr("Copy nahi hua — supabase/kapila_FULL.sql manually kholo."); }
+  };
+
+  const mm = Math.floor(lockedMs / 60000);
+  const ss = Math.floor((lockedMs % 60000) / 1000);
 
   return (
-    <div className="admin-shell scanlines relative min-h-screen grid place-items-center px-4 text-cream overflow-hidden">
-      <div className="noise-layer" aria-hidden="true" />
-      {/* ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[560px] h-[560px] rounded-full bg-saffron/10 blur-[120px]" aria-hidden="true" />
-
+    <div className="admin-shell min-h-screen grid place-items-center px-4 relative overflow-hidden">
+      <div className="scanlines absolute inset-0" aria-hidden="true" />
       <motion.div
-        initial={{ opacity: 0, y: 26 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-sm"
+        initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-md bg-coal-2 border border-cream/12 rounded-2xl shadow-2xl overflow-hidden"
       >
-        <div className="text-center mb-7">
-          <motion.div
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.1 }}
-            className="mx-auto w-16 h-16 grid place-items-center rounded-2xl bg-coal-2 border border-cream/12 shadow-lift"
-          >
-            <DiyaMark className="w-10 h-10" />
-          </motion.div>
-          <h1 className="font-display font-black text-3xl mt-4 leading-none">
-            Kapila <span className="text-led">Counter</span>
-          </h1>
-          <p className="led text-[11px] tracking-[0.3em] text-cream/40 uppercase mt-2">
-            staff terminal · restricted
-          </p>
+        <div className="bg-espresso-deep px-7 py-6 flex items-center gap-4">
+          <span className="grid place-items-center w-12 h-12 rounded-xl bg-led/15 border border-led/40">
+            <Lock size={22} className="text-led" />
+          </span>
+          <div>
+            <p className="font-display font-black text-2xl text-cream leading-none">Kapila Counter</p>
+            <p className="led text-[10px] tracking-[0.3em] text-led/80 uppercase mt-1.5">staff terminal</p>
+          </div>
         </div>
 
-        <motion.form
-          key={shake}
-          onSubmit={submit}
-          animate={shake ? { x: [0, -9, 9, -6, 6, 0] } : undefined}
-          transition={{ duration: 0.4 }}
-          className="bg-coal-2/90 backdrop-blur border border-cream/12 rounded-2xl p-6 shadow-lift relative overflow-hidden"
-        >
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-saffron via-gold to-saffron" />
-
-          {locked ? (
+        <div className="p-7">
+          {lockedMs > 0 ? (
             <div className="text-center py-6">
-              <ShieldAlert size={34} className="mx-auto text-chili" />
-              <p className="font-display font-bold text-xl mt-3">Terminal locked</p>
-              <p className="led text-4xl text-chili mt-3">{lockMin}:00</p>
-              <p className="text-[12.5px] font-semibold text-cream/50 mt-2 leading-relaxed">
-                {MAX_ATTEMPTS} galat koshish ke baad {`15 min`} ka break.<br />
-                Chai pee lo, phir try karna.
+              <AlertTriangle size={36} className="mx-auto text-chili" />
+              <p className="font-display font-black text-2xl text-cream mt-3">Terminal band hai</p>
+              <p className="text-[13px] font-semibold text-cream/55 mt-1.5">
+                {MAX_ATTEMPTS} galat koshish — {MAX_ATTEMPTS === 3 ? "15" : ""} minute ka lock.
               </p>
+              <p className="led text-4xl text-chili mt-4">{mm}:{String(ss).padStart(2, "0")}</p>
             </div>
           ) : (
-            <>
-              <label className="block text-[10.5px] font-bold tracking-[0.22em] text-cream/45 mb-1.5 uppercase">
-                Username
-              </label>
+            <form onSubmit={submit}>
+              <label className="block text-[10.5px] font-bold tracking-[0.2em] text-cream/45 uppercase mb-1.5">User</label>
               <input
-                value={user}
-                onChange={(e) => setUser(e.target.value)}
-                placeholder="admin@kapila"
-                autoComplete="username"
-                className={inputCls + " mb-4"}
+                value={user} onChange={(e) => setUser(e.target.value)} placeholder="admin@kapila"
+                className="led w-full h-12 px-4 rounded-lg bg-coal-3 border border-cream/12 text-cream placeholder:text-cream/25 focus:border-led text-[14px] mb-4"
               />
-              <label className="block text-[10.5px] font-bold tracking-[0.22em] text-cream/45 mb-1.5 uppercase">
-                Password
-              </label>
+              <label className="block text-[10.5px] font-bold tracking-[0.2em] text-cream/45 uppercase mb-1.5">Password</label>
               <input
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                placeholder="••••••••••"
-                type="password"
-                autoComplete="current-password"
-                className={inputCls}
+                type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••••••"
+                className="led w-full h-12 px-4 rounded-lg bg-coal-3 border border-cream/12 text-cream placeholder:text-cream/25 focus:border-led text-[14px]"
               />
-
-              {err && (
-                <p className="flex items-center gap-1.5 text-chili text-[12.5px] font-bold mt-3">
-                  <Lock size={13} /> {err}
-                  {attemptsLeft != null && (
-                    <span className="text-cream/50 font-semibold">
-                      · {attemptsLeft} try bach{attemptsLeft === 1 ? "a" : "e"}
-                    </span>
-                  )}
-                </p>
-              )}
-
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                type="submit"
-                className="mt-5 w-full h-12 rounded-lg bg-led text-coal font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-gold transition-colors shadow-[0_8px_26px_-8px_rgba(255,194,75,0.5)]"
-              >
-                <Lock size={16} /> Counter kholo
+              {err && <p className="text-chili text-[12.5px] font-bold mt-3">{err}</p>}
+              <motion.button whileTap={{ scale: 0.97 }} type="submit" className="mt-5 w-full h-12 rounded-lg bg-led text-coal font-bold text-[14px] hover:bg-gold transition-colors">
+                Counter kholo
               </motion.button>
-              <p className="led text-[10.5px] text-cream/35 text-center mt-3.5">
-                {MAX_ATTEMPTS} galat attempts = 15 min lock
-              </p>
-            </>
+            </form>
           )}
-        </motion.form>
 
-        <a
-          href="#/"
-          onClick={() => (window.location.hash = "#/")}
-          className="flex items-center justify-center gap-1.5 mt-5 text-[12.5px] font-semibold text-cream/45 hover:text-led transition-colors"
-        >
-          <ExternalLink size={13} /> Wapas dukaan pe
-        </a>
+          <button
+            onClick={() => void copySql()}
+            className={`mt-4 w-full h-11 rounded-lg border text-[12.5px] font-bold flex items-center justify-center gap-2 transition-colors ${
+              copied ? "border-leaf text-leaf bg-leaf/10" : "border-cream/20 text-cream/60 hover:text-led hover:border-led/60"
+            }`}
+          >
+            {copied ? (<><Check size={15} /> Poora SQL copy ho gaya!</>) : (<><Database size={15} /> Poora SQL copy karo (Supabase ke liye)</>)}
+          </button>
+        </div>
       </motion.div>
     </div>
   );
 }
 
-/* ── shell ── */
 export default function AdminApp() {
-  const [authed, setAuthed] = useState<boolean>(() => isAdminSession());
-  const [tab, setTab] = useState<AdminTab>("home");
-  const [now, setNow] = useState(() => new Date());
+  const [authed, setAuthed] = useState(() => isAdminSession());
+  const [tab, setTab] = useState<AdminTab>("dashboard");
 
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
+  if (!authed) return <LoginGate onIn={() => setAuthed(true)} />;
 
-  const clock = useMemo(
-    () =>
-      now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    [now]
-  );
-  const day = useMemo(
-    () => now.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }),
-    [now]
-  );
-
-  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  const logout = () => { endAdminSession(); setAuthed(false); };
 
   return (
-    <div className="admin-shell scanlines relative min-h-screen text-cream">
-      <div className="noise-layer" aria-hidden="true" />
+    <div className="admin-shell min-h-screen text-cream relative">
+      <div className="scanlines fixed inset-0 pointer-events-none" aria-hidden="true" />
 
       {/* top bar */}
-      <header className="sticky top-0 z-40 bg-coal/85 backdrop-blur-xl border-b border-cream/10">
+      <header className="sticky top-0 z-40 bg-coal/90 backdrop-blur-md border-b border-cream/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <DiyaMark className="w-9 h-9" />
-            <div className="leading-none">
-              <p className="font-display font-black text-lg">
-                Kapila <span className="text-led">Counter</span>
-              </p>
-              <p className="led text-[9.5px] tracking-[0.28em] text-cream/40 uppercase mt-0.5">
-                admin terminal
-              </p>
+            <span className="grid place-items-center w-9 h-9 rounded-lg bg-led/15 border border-led/40">
+              <Store size={17} className="text-led" />
+            </span>
+            <div>
+              <p className="font-display font-black text-lg leading-none">Kapila Counter</p>
+              <p className="led text-[9px] tracking-[0.28em] text-led/70 uppercase mt-0.5">staff terminal</p>
             </div>
           </div>
-
-          <div className="hidden md:flex items-center gap-2 led text-[13px] text-cream/60">
-            <span className="px-3 py-1.5 rounded-md bg-coal-2 border border-cream/10">{day}</span>
-            <span className="px-3 py-1.5 rounded-md bg-coal-2 border border-cream/10 text-led">{clock}</span>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-leaf/15 border border-leaf/40 text-leaf text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-leaf animate-pulse" /> ONLINE
-            </span>
+          <div className="flex items-center gap-2">
+            <a
+              href={`${window.location.pathname}#`}
+              className="hidden sm:flex items-center gap-2 h-10 px-4 rounded-lg border border-cream/20 text-[12.5px] font-bold text-cream/70 hover:text-gold hover:border-gold/60 transition-colors"
+              data-hover
+            >
+              <Store size={15} /> Dukaan dekho
+            </a>
+            <button onClick={logout} className="flex items-center gap-2 h-10 px-4 rounded-lg border border-chili/40 text-[12.5px] font-bold text-chili hover:bg-chili/10 transition-colors" data-hover>
+              <LogOut size={15} /> Band karo
+            </button>
           </div>
-
-          <button
-            onClick={() => {
-              endAdminSession();
-              setAuthed(false);
-            }}
-            className="flex items-center gap-2 h-10 px-4 rounded-lg border border-cream/15 text-[13px] font-bold text-cream/70 hover:border-chili hover:text-chili transition-colors"
-          >
-            <LogOut size={15} /> Band karo
-          </button>
         </div>
+      </header>
 
-        {/* tabs */}
-        <nav className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto pb-2 -mt-1">
+      {/* tabs */}
+      <nav className="sticky top-16 z-30 bg-coal/80 backdrop-blur-md border-b border-cream/8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.id;
-            const Icon = t.icon;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`relative shrink-0 flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-colors ${
-                  active ? "text-coal" : "text-cream/60 hover:text-cream hover:bg-coal-2"
+                className={`relative flex items-center gap-2.5 px-4 sm:px-5 h-14 text-[13.5px] font-bold whitespace-nowrap transition-colors ${
+                  active ? "text-led" : "text-cream/50 hover:text-cream/85"
                 }`}
+                data-hover
               >
-                {active && (
-                  <motion.span
-                    layoutId="admin-tab"
-                    className="absolute inset-0 rounded-lg bg-led shadow-[0_6px_20px_-6px_rgba(255,194,75,0.5)]"
-                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-2">
-                  <Icon size={15} />
+                <t.icon size={17} />
+                <span>
                   {t.label}
-                  <span className={`hidden lg:inline text-[10px] font-semibold ${active ? "text-coal/60" : "text-cream/30"}`}>
-                    · {t.hint}
-                  </span>
+                  <span className={`block text-[9px] font-semibold tracking-wider uppercase ${active ? "text-led/60" : "text-cream/30"}`}>{t.hint}</span>
                 </span>
+                {active && <motion.span layoutId="admin-tab" className="absolute bottom-0 left-3 right-3 h-[3px] rounded-t-full bg-led" transition={{ type: "spring", stiffness: 400, damping: 32 }} />}
               </button>
             );
           })}
-        </nav>
-      </header>
+        </div>
+      </nav>
 
-      {/* content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-7">
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            {tab === "home" && <AdminHome goto={setTab} />}
+            {tab === "dashboard" && <AdminHome goto={setTab} />}
             {tab === "scan" && <AdminScan />}
             {tab === "orders" && <AdminOrders />}
             {tab === "customers" && <AdminCustomers />}

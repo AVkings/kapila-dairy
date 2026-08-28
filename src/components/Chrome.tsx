@@ -1,24 +1,11 @@
-/* ── Kapila Dairy · navbar · cursor · toasts · fly-layer · login · footer */
+/* ── Kapila Dairy · navbar · cursor · toasts · fly-layer · footer ──── */
 import { useEffect, useState, type FormEvent } from "react";
 import {
-  AnimatePresence,
-  motion,
-  useMotionValue,
-  useScroll,
-  useMotionValueEvent,
+  AnimatePresence, motion, useMotionValue, useScroll, useMotionValueEvent,
   useSpring,
 } from "framer-motion";
 import {
-  ShoppingBag,
-  Sparkles,
-  MapPin,
-  Phone,
-  Clock,
-  ArrowRight,
-  LogOut,
-  User,
-  Lock,
-  X,
+  ShoppingBag, Sparkles, MapPin, Phone, Clock, ArrowRight, LogOut, User, Mail, Lock,
 } from "lucide-react";
 import { useStore, type Fly } from "../lib/store";
 import { scrollToId } from "../lib/scroll";
@@ -26,7 +13,7 @@ import { CATEGORIES } from "../lib/data";
 import { getSessionCustomer, loginWithEmail, supabaseReady } from "../lib/supabase";
 
 /* ── logo ── */
-function DiyaMark({ className = "w-9 h-9" }: { className?: string }) {
+export function DiyaMark({ className = "w-9 h-9" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none" aria-hidden="true">
       <path d="M24 4C24 4 9 21.5 9 30.5a15 15 0 0 0 30 0C39 21.5 24 4 24 4Z" fill="#FF9933" />
@@ -40,10 +27,7 @@ function Logo() {
   const { nav, view } = useStore();
   return (
     <button
-      onClick={() => {
-        if (view.page !== "home") nav({ page: "home" });
-        else scrollToId("#top");
-      }}
+      onClick={() => (view.page !== "home" ? nav({ page: "home" }) : scrollToId("#top"))}
       className="flex items-center gap-2.5 group"
       data-hover
     >
@@ -62,7 +46,6 @@ function Logo() {
   );
 }
 
-/* ── navbar ── */
 const LINKS = [
   { label: "Mithai Ghar", target: "#menu" },
   { label: "Chaar Kone", target: "#categories" },
@@ -71,29 +54,22 @@ const LINKS = [
 ];
 
 export function Navbar() {
-  const { cart, cartBump, cartOpen, setCartOpen, cartRef, customer, setLoginOpen, nav, view, logout, toast } =
-    useStore();
+  const {
+    cart, cartBump, cartOpen, setCartOpen, cartRef, customer, setLoginOpen, nav, view,
+    logout, toast,
+  } = useStore();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 30));
-
   const count = cart.reduce((s, i) => s + i.qty, 0);
-  const initials = (customer?.name ?? "?")
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
   const goSection = (target: string) => {
     setMenuOpen(false);
     if (view.page !== "home") {
       nav({ page: "home" });
       window.setTimeout(() => scrollToId(target), 520);
-    } else {
-      scrollToId(target);
-    }
+    } else scrollToId(target);
   };
 
   return (
@@ -104,13 +80,12 @@ export function Navbar() {
         transition={{ type: "spring", stiffness: 120, damping: 18, delay: 0.15 }}
         className={`fixed top-0 inset-x-0 z-[70] transition-all duration-500 ${
           scrolled
-            ? "h-[60px] bg-cream/75 backdrop-blur-xl border-b border-espresso/10 shadow-[0_10px_36px_-22px_rgba(62,39,35,0.5)]"
+            ? "h-[60px] bg-cream/80 backdrop-blur-xl border-b border-espresso/10 shadow-[0_10px_36px_-22px_rgba(62,39,35,0.5)]"
             : "h-20 bg-transparent"
         }`}
       >
         <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
           <Logo />
-
           <nav className="hidden lg:flex items-center gap-1">
             {LINKS.map((l) => (
               <button
@@ -124,39 +99,22 @@ export function Navbar() {
               </button>
             ))}
           </nav>
-
           <div className="flex items-center gap-2 sm:gap-3">
             {customer ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => goSection("#rewards")}
-                  className="flex items-center gap-2 rounded-full bg-espresso text-cream pl-1.5 pr-3.5 h-10 text-sm font-bold hover:bg-espresso-deep transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 rounded-full bg-espresso text-gold pl-3 pr-3.5 h-10 text-sm font-bold hover:bg-espresso-deep transition-colors"
                   data-hover
                   title="Sakhar ke dane"
                 >
-                  <span className="grid place-items-center w-7 h-7 rounded-full bg-saffron text-espresso-deep text-[11px] font-black">
-                    {initials}
-                  </span>
-                  <span className="hidden sm:flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-gold" />
-                    <motion.span
-                      key={customer.dane}
-                      initial={{ scale: 0.4 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                      className="text-gold"
-                    >
-                      {customer.dane}
-                    </motion.span>
-                    <span className="text-cream/55 font-medium text-[11px]">dane</span>
-                  </span>
+                  <Sparkles size={15} className="text-gold" />
+                  {customer.dane}
+                  <span className="text-cream/55 font-medium text-[11px]">dane</span>
                 </button>
                 <button
-                  onClick={() => {
-                    logout();
-                    toast(`Phir milenge, ${customer.name.split(" ")[0]} ji!`, "ok");
-                  }}
-                  className="hidden md:grid w-10 h-10 place-items-center rounded-full border border-espresso/25 text-espresso/70 hover:bg-espresso hover:text-cream transition-colors"
+                  onClick={() => { logout(); toast(`Phir milenge, ${customer.name.split(" ")[0]} ji!`, "ok"); }}
+                  className="grid w-10 h-10 place-items-center rounded-full border border-espresso/25 text-espresso/70 hover:bg-espresso hover:text-cream transition-colors"
                   data-hover
                   title="Logout"
                 >
@@ -173,7 +131,6 @@ export function Navbar() {
               </button>
             )}
 
-            {/* cart */}
             <motion.button
               ref={cartRef}
               onClick={() => setCartOpen(true)}
@@ -192,15 +149,12 @@ export function Navbar() {
                 initial={{ scale: 0.3, y: 5 }}
                 animate={{ scale: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 16 }}
-                className={`absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-saffron-deep text-cream text-[11px] font-bold grid place-items-center shadow-md ${
-                  count === 0 ? "hidden" : ""
-                }`}
+                className={`absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-saffron-deep text-cream text-[11px] font-bold grid place-items-center shadow-md ${count === 0 ? "hidden" : ""}`}
               >
                 {count}
               </motion.span>
             </motion.button>
 
-            {/* hamburger */}
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className="lg:hidden grid place-items-center w-11 h-11 rounded-full border-[1.5px] border-espresso/25"
@@ -208,27 +162,18 @@ export function Navbar() {
               aria-label="Menu"
             >
               <span className="relative w-5 h-3.5">
-                <motion.span
-                  animate={menuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-                  className="absolute top-0 left-0 w-full h-[2.2px] rounded-full bg-espresso block"
-                />
-                <motion.span
-                  animate={menuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-                  className="absolute bottom-0 left-0 w-full h-[2.2px] rounded-full bg-espresso block"
-                />
+                <motion.span animate={menuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }} className="absolute top-0 left-0 w-full h-[2.2px] rounded-full bg-espresso block" />
+                <motion.span animate={menuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }} className="absolute bottom-0 left-0 w-full h-[2.2px] rounded-full bg-espresso block" />
               </span>
             </button>
           </div>
         </div>
       </motion.header>
 
-      {/* mobile menu */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
+            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 240, damping: 28 }}
             className="fixed inset-0 z-[75] lg:hidden bg-espresso-deep text-cream flex flex-col px-7 pt-24 pb-10"
           >
@@ -236,8 +181,7 @@ export function Navbar() {
               {LINKS.map((l, i) => (
                 <motion.button
                   key={l.target}
-                  initial={{ x: 60, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
+                  initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.08 + i * 0.07, type: "spring", stiffness: 220, damping: 22 }}
                   onClick={() => goSection(l.target)}
                   className="text-left font-display font-bold text-4xl py-2.5 border-b border-cream/10 hover:text-gold transition-colors"
@@ -247,32 +191,21 @@ export function Navbar() {
                 </motion.button>
               ))}
             </nav>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mt-auto flex items-center justify-between"
-            >
+            <div className="mt-auto">
               {customer ? (
                 <div className="flex items-center gap-2 text-gold font-bold">
                   <Sparkles size={18} /> {customer.dane} dane
                 </div>
               ) : (
                 <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setLoginOpen(true);
-                  }}
+                  onClick={() => { setMenuOpen(false); setLoginOpen(true); }}
                   className="flex items-center gap-2 bg-saffron text-espresso-deep font-bold px-5 h-12 rounded-full"
                   data-hover
                 >
                   Login karo <ArrowRight size={16} />
                 </button>
               )}
-              <a href="tel:+919876543210" className="text-cream/60 text-sm" data-hover>
-                +91 98765 43210
-              </a>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -292,25 +225,19 @@ function FlyNode({ f }: { f: Fly }) {
   const midX = (f.from.x + to.x) / 2;
   return (
     <motion.img
-      src={f.img}
-      alt=""
-      draggable={false}
+      src={f.img} alt="" draggable={false}
       className="fixed z-[95] pointer-events-none rounded-full object-cover shadow-lift ring-2 ring-cream"
       style={{ width: 54, height: 54, left: -27, top: -27 }}
       initial={{ x: f.from.x, y: f.from.y, scale: 1, opacity: 1, rotate: 0 }}
       animate={{
-        x: [f.from.x, midX, to.x],
-        y: [f.from.y, f.from.y - 120, to.y],
-        scale: [1, 0.9, 0.25],
-        opacity: [1, 1, 0.7],
-        rotate: [0, 40, 120],
+        x: [f.from.x, midX, to.x], y: [f.from.y, f.from.y - 120, to.y],
+        scale: [1, 0.9, 0.25], opacity: [1, 1, 0.7], rotate: [0, 40, 120],
       }}
       transition={{ duration: 0.78, ease: [0.45, 0, 0.25, 1], times: [0, 0.5, 1] }}
       onAnimationComplete={() => retireFly(f.id)}
     />
   );
 }
-
 export function FlyLayer() {
   const { flies } = useStore();
   return <>{flies.map((f) => <FlyNode key={f.id} f={f} />)}</>;
@@ -328,12 +255,8 @@ export function CustomCursor() {
   const [down, setDown] = useState(false);
 
   useEffect(() => {
-    /* hide the native pointer ONLY while this custom cursor is alive */
     document.documentElement.classList.add("has-custom-cursor");
-    const move = (e: MouseEvent) => {
-      x.set(e.clientX);
-      y.set(e.clientY);
-    };
+    const move = (e: MouseEvent) => { x.set(e.clientX); y.set(e.clientY); };
     const over = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
       setHover(!!t?.closest?.("a,button,[role=button],input,textarea,select,[data-hover]"));
@@ -389,7 +312,7 @@ export function Toasts() {
               t.tone === "ok" ? "bg-espresso text-cream border-saffron" : "bg-chili text-cream border-gold"
             }`}
           >
-            {t.tone === "ok" ? <Sparkles size={16} className="text-gold shrink-0" /> : null}
+            {t.tone === "ok" && <Sparkles size={16} className="text-gold shrink-0" />}
             {t.msg}
           </motion.div>
         ))}
@@ -398,7 +321,7 @@ export function Toasts() {
   );
 }
 
-/* ── login modal · Supabase Auth (email login, phone saved in khata) ── */
+/* ── login modal · email + password (phone saved in khata) ── */
 export function LoginModal() {
   const { loginOpen, setLoginOpen, onAuthedCustomer, toast } = useStore();
   const [name, setName] = useState("");
@@ -410,10 +333,7 @@ export function LoginModal() {
 
   const close = () => {
     setLoginOpen(false);
-    window.setTimeout(() => {
-      setErr("");
-      setBusy(false);
-    }, 350);
+    window.setTimeout(() => { setErr(""); setBusy(false); }, 350);
   };
 
   const submit = async (e: FormEvent) => {
@@ -423,38 +343,20 @@ export function LoginModal() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Email sahi format mein likho.");
     if (password.length < 6) return setErr("Password kam se kam 6 akshar ka rakho.");
     if (!supabaseReady) return setErr("Supabase offline hai — thodi der mein try karo.");
-    setErr("");
-    setBusy(true);
+    setErr(""); setBusy(true);
     const res = await loginWithEmail(name.trim(), email, password, phone);
-    if (res.needsConfirm) {
-      setBusy(false);
-      setErr("Aapke email pe confirm link gaya hai — uspe click karke wapas login karo.");
-      return;
-    }
-    if (!res.ok) {
-      setBusy(false);
-      setErr(res.error ?? "Login nahi hua — dobara try karo.");
-      return;
-    }
+    if (res.needsConfirm) { setBusy(false); return setErr("Aapke email pe confirm link gaya hai — uspe click karke wapas login karo."); }
+    if (!res.ok) { setBusy(false); return setErr(res.error ?? "Login nahi hua — dobara try karo."); }
     const c = await getSessionCustomer();
-    if (!c) {
-      setBusy(false);
-      setErr("Session nahi bana — dobara try karo.");
-      return;
-    }
+    if (!c) { setBusy(false); return setErr("Session nahi bana — dobara try karo."); }
     const merged = { ...c, name: name.trim() || c.name, phone };
     const credited = onAuthedCustomer(merged);
-    setBusy(false);
-    close();
-    if (credited > 0) {
-      toast(`Khata khul gaya! Pehle ke +${credited} sakhar ke dane bhi jud gaye.`, "ok");
-    } else {
-      toast(`Namaste ${merged.name.split(" ")[0]} ji! Har ₹10 pe 1 dana milega.`, "ok");
-    }
+    setBusy(false); close();
+    if (credited > 0) toast(`Khata khul gaya! Pehle ke +${credited} sakhar ke dane bhi jud gaye.`, "ok");
+    else toast(`Namaste ${merged.name.split(" ")[0]} ji! Har ₹10 pe 1 dana milega.`, "ok");
   };
 
-  const inputCls =
-    "w-full h-12 px-4 rounded-xl border-[1.5px] border-espresso/20 bg-white/70 text-[15px] font-medium";
+  const inputCls = "w-full h-12 px-4 rounded-xl border-[1.5px] border-espresso/20 bg-white/70 text-[15px] font-medium";
   const labelCls = "block text-[11px] font-bold tracking-[0.18em] text-espresso/60 mb-1.5";
 
   return (
@@ -462,101 +364,59 @@ export function LoginModal() {
       {loginOpen && (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={close}
             className="fixed inset-0 z-[80] bg-espresso-deep/60 backdrop-blur-sm"
           />
-          <div className="fixed inset-0 z-[81] grid place-items-center p-4 pointer-events-none overflow-y-auto">
-            <motion.div
+          <div className="fixed inset-0 z-[81] grid place-items-center p-4 pointer-events-none">
+            <motion.form
+              onSubmit={submit}
               initial={{ opacity: 0, scale: 0.85, y: 28 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 16 }}
               transition={{ type: "spring", stiffness: 320, damping: 26 }}
-              className="pointer-events-auto w-full max-w-sm bg-cream rounded-[1.6rem] p-6 sm:p-7 shadow-lift border border-gold/40 relative overflow-hidden my-8"
+              className="pointer-events-auto w-full max-w-sm bg-cream rounded-[1.6rem] p-7 shadow-lift border border-gold/40 relative overflow-hidden max-h-[92vh] overflow-y-auto"
             >
               <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-saffron/20 blur-2xl" />
-              <button
-                onClick={close}
-                className="absolute top-4 right-4 w-9 h-9 grid place-items-center rounded-full border border-espresso/20 hover:bg-espresso hover:text-cream transition-colors"
-                data-hover
-                aria-label="Band karo"
-              >
-                <X size={16} />
-              </button>
-
               <div className="flex items-center gap-3 mb-1">
                 <DiyaMark className="w-10 h-10" />
                 <h3 className="font-display font-black text-3xl">Dhaabe ka Khata</h3>
               </div>
               <p className="font-hand text-xl text-saffron-deep mb-5">
-                email se login — phone khate mein safe rehta hai
+                naam + phone + email — bas, koi jhanjhat nahi
               </p>
-
-              <form onSubmit={submit}>
-                <label className={labelCls}>NAAM (ZAROORI)</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Ramesh Gupta"
-                  className={inputCls + " mb-4"}
-                />
-                <label className={labelCls}>PHONE (10 DIGIT)</label>
-                <div className="flex gap-2 mb-4">
-                  <span className="grid place-items-center h-12 px-3 rounded-xl border-[1.5px] border-espresso/20 bg-sand/60 font-bold text-espresso/70 text-sm shrink-0">
-                    +91
-                  </span>
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    placeholder="98765 43210"
-                    inputMode="numeric"
-                    className={inputCls + " tracking-widest"}
-                  />
-                </div>
-                <label className={labelCls}>EMAIL</label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ramesh@example.com"
-                  type="email"
-                  className={inputCls + " mb-4"}
-                />
-                <label className={labelCls}>PASSWORD (6+ AKSHAR)</label>
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  type="password"
-                  className={inputCls}
-                />
-                {err && <p className="text-chili text-xs font-semibold mt-2.5">{err}</p>}
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  type="submit"
-                  disabled={busy}
-                  className="mt-5 w-full py-3.5 rounded-xl bg-espresso text-cream font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-saffron-deep transition-colors disabled:opacity-60"
-                  data-hover
-                >
-                  {busy ? (
-                    <>
-                      <span className="w-5 h-5 rounded-full border-2 border-cream/30 border-t-cream animate-spin" />
-                      Khata khul raha…
-                    </>
-                  ) : (
-                    <>
-                      Khata kholo <ArrowRight size={16} />
-                    </>
-                  )}
-                </motion.button>
-                <p className="text-[11px] text-espresso/50 text-center mt-3 leading-relaxed">
-                  Naye ho? Same form se khata khud khul jayega.
-                  <br />
-                  Bina login ke bhi order ho sakta hai — dane ke liye khata kholo.
-                </p>
-              </form>
-            </motion.div>
+              <label className={labelCls}>NAAM</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ramesh Gupta" className={`${inputCls} mb-4`} />
+              <label className={labelCls}>PHONE (10 digit)</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="98765 43210" inputMode="numeric"
+                className={`${inputCls} mb-4 tracking-widest`}
+              />
+              <label className={labelCls}>EMAIL</label>
+              <div className="relative mb-4">
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-espresso/40" />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aap@email.com" className={`${inputCls} pl-10`} />
+              </div>
+              <label className={labelCls}>PASSWORD (6+ akshar)</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-espresso/40" />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`${inputCls} pl-10`} />
+              </div>
+              {err && <p className="text-chili text-xs font-semibold mt-2">{err}</p>}
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                type="submit" disabled={busy}
+                className="mt-5 w-full py-3.5 rounded-xl bg-espresso text-cream font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-saffron-deep transition-colors disabled:opacity-60"
+                data-hover
+              >
+                {busy ? "Khata khul raha…" : <><Sparkles size={17} className="text-gold" /> Khata kholo — dane kamao</>}
+              </motion.button>
+              <p className="text-[11px] text-espresso/50 text-center mt-3">
+                Har ₹10 pe 1 sakhar ka dana · 100 dane pe free doodh
+              </p>
+            </motion.form>
           </div>
         </>
       )}
@@ -567,7 +427,6 @@ export function LoginModal() {
 /* ── footer ── */
 export function Footer() {
   const { setFilter, nav, view, dbSource } = useStore();
-  const live = dbSource === "supabase";
   const goMenu = (cat: string) => {
     setFilter(cat as typeof CATEGORIES[number]["id"]);
     if (view.page !== "home") {
@@ -575,10 +434,10 @@ export function Footer() {
       window.setTimeout(() => scrollToId("#menu"), 520);
     } else scrollToId("#menu");
   };
+  const live = dbSource === "supabase";
 
   return (
     <footer id="contact" className="relative bg-espresso-deep text-cream overflow-hidden">
-      <div className="absolute -top-7 left-0 right-0 h-7 bg-espresso-deep [clip-path:polygon(0_100%,100%_100%,100%_0,50%_100%,0_0)]" />
       <div className="max-w-7xl mx-auto px-5 sm:px-8 pt-20 pb-10 relative">
         <div className="grid md:grid-cols-[1.4fr_1fr_1fr] gap-12">
           <div>
@@ -595,115 +454,55 @@ export function Footer() {
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               {["A2 Doodh", "Bilona Ghee", "Halwai Mithai", "Matki Lassi"].map((b) => (
-                <span key={b} className="px-3 py-1.5 rounded-full border border-cream/20 text-xs font-semibold text-cream/75">
-                  {b}
-                </span>
+                <span key={b} className="px-3 py-1.5 rounded-full border border-cream/20 text-xs font-semibold text-cream/75">{b}</span>
               ))}
             </div>
           </div>
-
           <div>
             <p className="text-[11px] font-bold tracking-[0.28em] text-gold mb-4">DHAABE KA PATA</p>
             <ul className="space-y-3.5 text-sm text-cream/75">
-              <li className="flex gap-3">
-                <MapPin size={17} className="text-saffron shrink-0 mt-0.5" />
-                <span>
-                  14, Doodh Mandi Road,
-                  <br /> Purana Bazaar, Shahar — 282001
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <Clock size={17} className="text-saffron shrink-0 mt-0.5" />
-                <span>
-                  Roz subah <b className="text-cream">6:00</b> se raat <b className="text-cream">9:30</b> tak
-                  <br />
-                  <span className="text-cream/50 text-xs">Tyohaar pe raat 11 baje tak</span>
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <Phone size={17} className="text-saffron shrink-0 mt-0.5" />
-                <a href="tel:+919876543210" className="hover:text-gold transition-colors" data-hover>
-                  +91 98765 43210
-                </a>
-              </li>
+              <li className="flex gap-3"><MapPin size={17} className="text-saffron shrink-0 mt-0.5" /><span>14, Doodh Mandi Road,<br />Purana Bazaar — 282001</span></li>
+              <li className="flex gap-3"><Clock size={17} className="text-saffron shrink-0 mt-0.5" /><span>Roz subah <b className="text-cream">6:00</b> se raat <b className="text-cream">9:30</b> tak</span></li>
+              <li className="flex gap-3"><Phone size={17} className="text-saffron shrink-0 mt-0.5" /><a href="tel:+919876543210" className="hover:text-gold transition-colors" data-hover>+91 98765 43210</a></li>
             </ul>
           </div>
-
           <div>
             <p className="text-[11px] font-bold tracking-[0.28em] text-gold mb-4">JALDI JAO</p>
             <ul className="space-y-2.5 text-sm">
               {CATEGORIES.map((c) => (
                 <li key={c.id}>
-                  <button
-                    onClick={() => goMenu(c.id)}
-                    className="text-cream/75 hover:text-gold hover:translate-x-1 inline-block transition-all font-medium"
-                    data-hover
-                  >
+                  <button onClick={() => goMenu(c.id)} className="text-cream/75 hover:text-gold hover:translate-x-1 inline-block transition-all font-medium" data-hover>
                     {c.name} <span className="text-cream/35 text-xs">· {c.hindi}</span>
                   </button>
                 </li>
               ))}
-              <li>
-                <button
-                  onClick={() => scrollToId("#rewards")}
-                  className="text-cream/75 hover:text-gold hover:translate-x-1 inline-block transition-all font-medium"
-                  data-hover
-                >
-                  Sakhar ke Dane <span className="text-cream/35 text-xs">· rewards</span>
-                </button>
-              </li>
             </ul>
           </div>
         </div>
-
-        <div className="mt-12 flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-[11px] font-semibold text-cream/35 text-center max-w-3xl mx-auto leading-relaxed">
-          <span>Kaju Katli</span>·<span>Motichoor Laddoo</span>·<span>Gulab Jamun</span>·<span>Jalebi Rabri</span>·
-          <span>Kesar Peda</span>·<span>Taaza A2 Doodh</span>·<span>Malai Paneer</span>·<span>Bilona Desi Ghee</span>·
-          <span>Aloo Samosa</span>·<span>Aam Lassi</span>·<span>Mithai Online Order</span>·<span>Sweet Shop Near Me</span>
-        </div>
-
-        <div className="mt-8 pt-6 border-t border-cream/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-cream/45">
+        <div className="mt-14 pt-6 border-t border-cream/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-cream/45">
           <div className="flex items-center gap-4">
-            <p>© 2026 Kapila Dairy · Sab swad surakshit, sab dil khush.</p>
+            <p>© 2026 Kapila Dairy · Sab swad surakshit.</p>
             <span
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10.5px] font-bold tracking-wide ${
-                live
-                  ? "border-leaf/60 text-cream/85 bg-leaf/15"
-                  : "border-gold/50 text-gold/90 bg-gold/10"
-              }`}
-              title={
-                live
-                  ? "Menu, orders aur khata — sab Supabase se juda hai"
-                  : "Supabase nahi mila — offline daftar chal raha hai"
-              }
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10.5px] font-bold tracking-wide ${live ? "border-leaf/60 text-cream/85 bg-leaf/15" : "border-gold/50 text-gold/90 bg-gold/10"}`}
+              title={live ? "Menu, orders aur khata — sab Supabase se juda hai" : "Supabase nahi mila — offline daftar chal raha hai"}
             >
               <span className="relative flex w-2 h-2">
-                <span
-                  className={`absolute inline-flex w-full h-full rounded-full opacity-60 ${
-                    live ? "bg-leaf animate-ping" : "bg-gold"
-                  }`}
-                />
-                <span
-                  className={`relative inline-flex w-2 h-2 rounded-full ${live ? "bg-leaf" : "bg-gold"}`}
-                />
+                <span className={`absolute inline-flex w-full h-full rounded-full opacity-60 ${live ? "bg-leaf animate-ping" : "bg-gold"}`} />
+                <span className={`relative inline-flex w-2 h-2 rounded-full ${live ? "bg-leaf" : "bg-gold"}`} />
               </span>
               {live ? "SUPABASE LIVE" : "OFFLINE DAFTAR"}
             </span>
           </div>
-          <p className="font-hand text-lg text-cream/60">teen peedhi ka bharosa</p>
+          <a
+            href={`${window.location.pathname}#/admin`}
+            className="font-mono text-[11px] text-cream/40 hover:text-gold transition-colors flex items-center gap-1.5"
+            data-hover
+          >
+            <Lock size={12} /> staff counter
+          </a>
         </div>
-        <a
-          href="#/admin"
-          className="mx-auto mt-4 flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.22em] uppercase text-cream/30 hover:text-led transition-colors w-max"
-          title="Staff counter terminal"
-        >
-          <Lock size={11} /> Staff counter
-        </a>
       </div>
-      <p
-        aria-hidden="true"
-        className="font-display font-black text-[19vw] leading-[0.72] text-center text-stroke-cream opacity-[0.07] select-none pointer-events-none -mb-[4vw]"
-      >
+      <p aria-hidden="true" className="font-display font-black text-[19vw] leading-[0.72] text-center text-stroke-cream opacity-[0.07] select-none pointer-events-none -mb-[4vw]">
         KAPILA
       </p>
     </footer>
