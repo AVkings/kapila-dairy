@@ -1,97 +1,77 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>coder-app-name</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    <meta name="theme-color" content="#FFFEF0" />
+
+    <!-- ── SEO ── -->
+    <title>Kapila Dairy — Taaza Mithai, A2 Doodh & Desi Ghee | Kaju Katli, Laddoo, Jalebi Online Order</title>
+    <meta
+      name="description"
+      content="Kapila Dairy — 1974 se taaza mithai, A2 gaay ka doodh, bilona desi ghee aur malai paneer. Kaju katli, motichoor laddoo, gulab jamun, jalebi aur kesar peda ghar baithe order karo. Online payment ya counter pe QR dikhao — har ₹10 pe 1 sakhar ka dana, 100 dane pe FREE inaam."
     />
-    <style>
-      /* 内联样式确保主题色立即生效，避免闪烁 */
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-      }
-      html.light,
-      html.light body {
-        background-color: #ffffff !important;
-        color: #000000;
-      }
-      html.dark,
-      html.dark body {
-        background-color: #1a1a1a !important;
-        color: #ffffff;
-      }
-    </style>
-    <script>
-      // 在 React 加载前立即设置主题，避免闪烁
-      (function () {
-        const isInIframe = window.self !== window.top;
+    <meta
+      name="keywords"
+      content="kapila dairy, mithai online, taaza mithai, indian sweets, kaju katli, motichoor laddoo, gulab jamun, jalebi, kesar peda, a2 doodh, a2 milk, desi ghee, bilona ghee, malai paneer, sweet shop near me, mithai shop, dairy shop, lassi, fresh sweets, diwali mithai, shaadi mithai"
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://kapiladairy.in/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kapila Dairy" />
+    <meta property="og:title" content="Kapila Dairy — Taaza Mithai, A2 Doodh & Desi Ghee" />
+    <meta
+      property="og:description"
+      content="1974 se taaza mithai aur doodh. Kaju katli, laddoo, gulab jamun, jalebi — online order karo, QR dikhao, mithai le jao. Har ₹10 pe 1 sakhar ka dana."
+    />
+    <meta property="og:url" content="https://kapiladairy.in/" />
+    <meta
+      property="og:image"
+      content="https://image.qwenlm.ai/generated-images/a1f8eaf4-1a38-4350-9c40-e5a135b1dc1d/_result.png"
+    />
+    <meta property="og:locale" content="hi_IN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kapila Dairy — Taaza Mithai, A2 Doodh & Desi Ghee" />
+    <meta
+      name="twitter:image"
+      content="https://image.qwenlm.ai/generated-images/a1f8eaf4-1a38-4350-9c40-e5a135b1dc1d/_result.png"
+    />
 
-        function applyThemeToDOM(theme) {
-          document.documentElement.classList.remove("light", "dark");
-          document.documentElement.classList.add(theme);
-          document.documentElement.setAttribute("data-theme", theme);
-        }
+    <!-- ── structured data ── -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": "Kapila Dairy",
+        "description": "Premium Indian sweet shop & dairy — taaza mithai, A2 doodh, bilona desi ghee. Est. 1974.",
+        "url": "https://kapiladairy.in/",
+        "telephone": "+919876543210",
+        "priceRange": "₹₹",
+        "currenciesAccepted": "INR",
+        "paymentAccepted": "Cash, UPI, Card, Razorpay",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "14, Doodh Mandi Road, Purana Bazaar",
+          "addressLocality": "Shahar",
+          "postalCode": "282001",
+          "addressCountry": "IN"
+        },
+        "openingHours": "Mo-Su 06:00-21:30",
+        "servesCuisine": ["Indian Sweets", "Mithai", "Dairy"],
+        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "5000" }
+      }
+    </script>
 
-        if (isInIframe) {
-          // 监听父窗口主动推送的主题消息
-          window.addEventListener("message", function (event) {
-            if (event.data && typeof event.data.theme === "string") {
-              const theme = event.data.theme;
-              if (theme === "light" || theme === "dark") {
-                applyThemeToDOM(theme);
-              }
-            }
-          });
-        } else {
-          // 非 iframe 环境，使用默认 light 主题
-          applyThemeToDOM("light");
-        }
-      })();
-    </script>
-      <script>
-      (function () {
-        if (window.self === window.top) return;
-        var reported = {};
-        window.addEventListener("error", function (event) {
-          // 资源加载失败的 error 事件没有 message，此处仅上报 JS 运行时错误
-          if (!event || !event.message) return;
-          var key =
-            event.message + "|" + (event.filename || "") + "|" + (event.lineno || 0);
-          if (reported[key]) return; // 相同错误只上报一次，避免渲染循环刷屏
-          reported[key] = true;
-          try {
-            window.parent.postMessage(
-              {
-                type: "sandbox-runtime-error",
-                payload: {
-                  message: String(event.message).slice(0, 500),
-                  filename: event.filename || "",
-                  lineno: event.lineno || 0,
-                  colno: event.colno || 0,
-                  stack:
-                    event.error && event.error.stack
-                      ? String(event.error.stack).slice(0, 2000)
-                      : ""
-                }
-              },
-              "*"
-            );
-          } catch (e) {
-            /* 上报失败不影响页面运行 */
-          }
-        });
-      })();
-    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300..800&family=Caveat:wght@500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
