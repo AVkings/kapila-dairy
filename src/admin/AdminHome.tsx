@@ -2,7 +2,13 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { IndianRupee, ShoppingBag, Sparkles, Smartphone, Coins, RefreshCw } from "lucide-react";
-import { dailyStats, listOrders, type AdminDayStat, type AdminOrderRow } from "../lib/admin";
+import {
+  dailyStats,
+  isMissingFunctionError,
+  listOrders,
+  type AdminDayStat,
+  type AdminOrderRow,
+} from "../lib/admin";
 import type { AdminTab } from "./AdminApp";
 import { inr } from "../lib/data";
 
@@ -90,8 +96,22 @@ export function AdminHome({ goto }: { goto: (t: AdminTab) => void }) {
       </div>
 
       {err && (
-        <div className="bg-chili/10 border border-chili/40 text-chili rounded-xl px-4 py-3 text-[13px] font-bold">
-          {err}
+        <div className="bg-chili/12 border-[1.5px] border-chili/50 rounded-xl px-5 py-4">
+          <div className="flex items-start gap-3">
+            <span className="led text-[10px] tracking-[0.2em] text-chili font-bold bg-chili/15 border border-chili/40 rounded px-2 py-1 shrink-0 mt-0.5">
+              DB ERROR
+            </span>
+            <div className="text-[13px] font-semibold text-cream/85 leading-relaxed">
+              <p className="text-chili font-bold">{err}</p>
+              {isMissingFunctionError(err) && (
+                <p className="mt-1.5">
+                  Database ke functions missing hain. Supabase → <b>SQL Editor</b> mein{" "}
+                  <code className="led text-gold bg-coal-3 px-1.5 py-0.5 rounded">supabase/kapila_FULL.sql</code>{" "}
+                  ka poora code paste karke <b>Run</b> karo, phir yahan Refresh dabao.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

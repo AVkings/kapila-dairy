@@ -2,7 +2,13 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Pencil, Plus, RefreshCw, X } from "lucide-react";
-import { listAllProducts, toggleProduct, upsertProduct, type ProductUpsert } from "../lib/admin";
+import {
+  isMissingFunctionError,
+  listAllProducts,
+  toggleProduct,
+  upsertProduct,
+  type ProductUpsert,
+} from "../lib/admin";
 import { inr, type Category, type Product, type UnitOption } from "../lib/data";
 
 const CATS: { id: Category; label: string }[] = [
@@ -125,7 +131,17 @@ export function AdminProducts() {
         </div>
       </div>
 
-      {err && <div className="bg-chili/10 border border-chili/40 text-chili rounded-xl px-4 py-3 text-[13px] font-bold">{err}</div>}
+      {err && (
+        <div className="bg-chili/10 border border-chili/40 rounded-xl px-4 py-3 text-[13px] font-bold text-chili">
+          {err}
+          {isMissingFunctionError(err) && (
+            <span className="block mt-1 font-semibold text-cream/75">
+              SQL Editor mein <span className="led text-gold">kapila_FULL.sql</span> chalaao, phir
+              Refresh dabao.
+            </span>
+          )}
+        </div>
+      )}
       {msg && (
         <div className="bg-leaf/10 border border-leaf/40 text-leaf rounded-xl px-4 py-3 text-[13px] font-bold flex items-center gap-2">
           <CheckCircle2 size={16} /> {msg}
@@ -239,8 +255,19 @@ export function AdminProducts() {
                     <input value={editing.since} onChange={(e) => setEditing({ ...editing, since: Number(e.target.value) || 1974 })} inputMode="numeric" className={inputCls + " led"} />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-[10.5px] font-bold tracking-[0.18em] text-cream/45 uppercase mb-1.5">Photo URL</label>
+                    <label className="block text-[10.5px] font-bold tracking-[0.18em] text-cream/45 uppercase mb-1.5">
+                      Photo URL <span className="text-cream/30 normal-case tracking-normal">(khaali chhodo → default mithai photo)</span>
+                    </label>
                     <input value={editing.image} onChange={(e) => setEditing({ ...editing, image: e.target.value })} placeholder="https://…/photo.jpg" className={inputCls} />
+                    {editing.image && (
+                      <img
+                        src={editing.image}
+                        alt="preview"
+                        className="mt-2 w-24 h-16 object-cover rounded-lg border border-cream/15"
+                        onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
+                        onLoad={(e) => ((e.target as HTMLImageElement).style.display = "")}
+                      />
+                    )}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[10.5px] font-bold tracking-[0.18em] text-cream/45 uppercase mb-1.5">Tag (optional)</label>

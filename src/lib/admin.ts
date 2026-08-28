@@ -146,10 +146,17 @@ export interface AdminDayStat {
 /* ── customers / dane ── */
 export const findCustomer = (phone: string) =>
   rpc<AdminCustomer[]>("admin_find_customer", { p_phone: phone });
+export const createCustomer = (name: string, phone: string, welcomeDane = 0) =>
+  rpc<string>("admin_create_customer", { p_name: name, p_phone: phone, p_dane: welcomeDane });
 export const spendDane = (phone: string, amount: number) =>
   rpc<number>("admin_spend_dane", { p_phone: phone, p_amount: amount });
 export const creditDane = (phone: string, amount: number) =>
   rpc<number>("admin_credit_dane", { p_phone: phone, p_amount: amount });
+
+/** true jab error ka matlab hai "SQL chalaao" — panels ko hint dikhane ke liye */
+export const isMissingFunctionError = (err: string | null) =>
+  !!err &&
+  /could not find the function|schema cache|does not exist|function .* not found/i.test(err);
 
 /* ── orders ── */
 export const listOrders = (limit = 40) =>

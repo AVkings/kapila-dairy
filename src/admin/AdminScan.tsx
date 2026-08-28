@@ -57,6 +57,7 @@ export function AdminScan() {
   const [busy, setBusy] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [camErr, setCamErr] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const stopScanner = async () => {
     const s = scannerRef.current;
@@ -77,10 +78,12 @@ export function AdminScan() {
     try {
       const t = JSON.parse(raw) as Ticket;
       if (!t || !t.order || !Array.isArray(t.items)) throw new Error("not a ticket");
+      const alreadyPaid = t.pay === "ONLINE-PAID" || t.pay === "DANE-REDEEM-FREE";
       setTicket(t);
-      setPaid(t.pay === "ONLINE-PAID" || t.pay === "DANE-REDEEM-FREE");
+      setPaid(alreadyPaid);
       setCollected(false);
-      setShowLink(false);
+      /* unpaid ticket → Razorpay QR turant kholo */
+      setShowLink(!alreadyPaid && !t.redeem);
       setJustPaid(false);
       setErr("");
       void stopScanner();
@@ -171,8 +174,20 @@ export function AdminScan() {
     });
     setPaid(o.paid || !!o.redeem);
     setCollected(o.status === "collected");
-    setShowLink(false);
+    /* unpaid → Razorpay QR turant kholo */
+    setShowLink(!o.paid && !o.redeem);
     setJustPaid(false);
+  };
+
+  const copyLink = async () => {
+    if (!ticket) return;
+    try {
+      await navigator.clipboard.writeText(payUrl(ticket.order));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setErr("Copy nahi hua — link manually select karo.");
+    }
   };
 
   return (
@@ -448,6 +463,21 @@ export function AdminScan() {
                           </span>
                           PAYMENT KA INTEZAAR…
                         </span>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => void copyLink()}
+                            className={`h-9 px-3.5 rounded-lg text-[11.5px] font-bold transition-colors ${
+                              copied
+                                ? "bg-leaf text-cream"
+                                : "bg-cream/10 border border-cream/20 text-cream/85 hover:border-led hover:text-led"
+                            }`}
+                          >
+                            {copied ? "Link copy ho gaya!" : "Link copy karo (WhatsApp pe bhejo)"}
+                          </button>
+                          <span className="text-[10px] font-bold text-cream/35">
+                            test mode: success@razorpay se pay karke dekho
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </motion.div>

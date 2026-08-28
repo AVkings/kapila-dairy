@@ -1,9 +1,104 @@
-/* ── Kapila Counter · dane khata (lookup · redeem · credit) ────────── */
-import { useMemo, useState } from "react";
+/* ── Kapila Counter · dane khata (lookup · create · redeem · credit) ── */
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Gift, Minus, Plus, Search, Sparkles } from "lucide-react";
-import { creditDane, findCustomer, spendDane, type AdminCustomer } from "../lib/admin";
+import { CheckCircle2, Gift, Minus, Plus, Search, Sparkles, UserPlus } from "lucide-react";
+import {
+  createCustomer,
+  creditDane,
+  findCustomer,
+  spendDane,
+  type AdminCustomer,
+} from "../lib/admin";
 import { REWARD_TIERS } from "../lib/data";
+
+/* ── naya khata (counter se customer banao) ── */
+function NewKhata({
+  defaultPhone,
+  onCreated,
+}: {
+  defaultPhone: string;
+  onCreated: (c: AdminCustomer) => void;
+}) {
+  const [name, setName] = useState("");
+  const [ph, setPh] = useState(defaultPhone);
+  const [welcome, setWelcome] = useState("0");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (defaultPhone) setPh(defaultPhone);
+  }, [defaultPhone]);
+
+  const create = async () => {
+    if (name.trim().length < 2) return setErr("Customer ka naam do (2+ akshar).");
+    if (!/^\d{10}$/.test(ph)) return setErr("Phone 10 digit ka hona chahiye.");
+    const w = Math.max(0, Math.floor(Number(welcome) || 0));
+    setErr("");
+    setBusy(true);
+    const res = await createCustomer(name.trim(), ph, w);
+    setBusy(false);
+    if (res.error) return setErr("Khata nahi khula: " + res.error);
+    setName("");
+    setWelcome("0");
+    onCreated({
+      id: res.data ?? "",
+      name: name.trim(),
+      phone: ph,
+      dane: w,
+      created_at: new Date().toISOString(),
+    });
+  };
+
+  const inputCls =
+    "h-11 px-4 rounded-lg bg-coal-3 border border-cream/12 text-cream placeholder:text-cream/25 focus:border-led text-[14px] font-medium";
+
+  return (
+    <div className="bg-coal-2/80 border border-led/25 rounded-xl p-5">
+      <p className="flex items-center gap-2 text-[11px] font-bold tracking-[0.2em] text-led uppercase mb-3">
+        <UserPlus size={14} /> Naya khata kholo
+      </p>
+      <div className="grid sm:grid-cols-[1.2fr_1fr] gap-2.5">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Naam — e.g. Suresh Yadav"
+          className={inputCls}
+        />
+        <input
+          value={ph}
+          onChange={(e) => setPh(e.target.value.replace(/\D/g, "").slice(0, 10))}
+          placeholder="Phone (10 digit)"
+          inputMode="numeric"
+          className={inputCls + " led tracking-widest"}
+        />
+      </div>
+      <div className="flex gap-2.5 mt-2.5 items-center">
+        <input
+          value={welcome}
+          onChange={(e) => setWelcome(e.target.value.replace(/\D/g, "").slice(0, 5))}
+          placeholder="0"
+          inputMode="numeric"
+          className={inputCls + " led w-24 text-center"}
+          aria-label="Welcome dane"
+        />
+        <span className="text-[11.5px] font-bold text-cream/45 leading-tight">
+          welcome dane
+          <br />
+          (optional)
+        </span>
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={() => void create()}
+          disabled={busy}
+          className="ml-auto flex items-center gap-2 h-11 px-5 rounded-lg bg-led text-coal text-[13.5px] font-bold hover:bg-gold disabled:opacity-50"
+        >
+          <UserPlus size={15} /> {busy ? "…" : "Khata kholo"}
+        </motion.button>
+      </div>
+      {err && <p className="text-chili text-[12.5px] font-bold mt-3">{err}</p>}
+    </div>
+  );
+}
 
 export function AdminCustomers() {
   const [phone, setPhone] = useState("");
@@ -99,6 +194,18 @@ export function AdminCustomers() {
           {err && <p className="text-chili text-[12.5px] font-bold mt-3">{err}</p>}
         </div>
 
+        {/* create customer right from the counter */}
+        <NewKhata
+          defaultPhone={phone}
+          onCreated={(c) => {
+            setCust(c);
+            setFound(true);
+            setPhone(c.phone);
+            setErr("");
+            setMsg(`Naya khata khul gaya — ${c.name} (${c.phone}) · ${c.dane} dane ke saath.`);
+          }}
+        />
+
         {/* result */}
         <AnimatePresence mode="wait">
           {!found ? (
@@ -124,7 +231,8 @@ export function AdminCustomers() {
             >
               <p className="font-display font-bold text-lg text-chili">Is number pe khata nahi hai</p>
               <p className="text-[13px] font-semibold text-cream/50 mt-1.5 leading-relaxed">
-                Customer ko website pe login karne ko kaho, ya order bana do — khata khud ban jayega.
+                Upar <b className="text-led">"Naya khata kholo"</b> card use karo — number pehle se
+                bhara hai. Ya customer khud website pe login kare toh khata khud ban jayega.
               </p>
             </motion.div>
           ) : (
