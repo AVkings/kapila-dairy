@@ -21,7 +21,9 @@ import {
   FlyLayer,
   LoginModal,
 } from "./components/Chrome";
-import AdminApp from "./admin/AdminApp";
+
+/* admin terminal is code-split — customers never download it */
+const AdminApp = lazy(() => import("./admin/AdminApp"));
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -125,7 +127,18 @@ function Shell() {
 
 export default function App() {
   const isAdmin = useIsAdminRoute();
-  if (isAdmin) return <AdminApp />;
+  if (isAdmin)
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen grid place-items-center bg-[#14100c] text-[#ffc24b] led text-sm">
+            counter khul raha…
+          </div>
+        }
+      >
+        <AdminApp />
+      </Suspense>
+    );
   return (
     <StoreProvider>
       <Shell />
