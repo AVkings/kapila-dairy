@@ -157,9 +157,11 @@ export default function App() {
 
   if (route.admin) {
     return (
-      <Suspense fallback={<div className="min-h-screen grid place-items-center bg-[#14100c] text-[#ffc24b] font-mono text-sm">counter khul raha…</div>}>
-        <AdminApp />
-      </Suspense>
+      <ChunkBoundary>
+        <Suspense fallback={<div className="min-h-screen grid place-items-center bg-[#14100c] text-[#ffc24b] font-mono text-sm">counter khul raha…</div>}>
+          <AdminApp />
+        </Suspense>
+      </ChunkBoundary>
     );
   }
 
