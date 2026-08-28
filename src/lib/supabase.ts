@@ -44,7 +44,7 @@ export async function sendPhoneOtp(
     phone: toE164(phone10),
     options: {
       shouldCreateUser: true,
-      data: { full_name: name, phone: phone10 },
+      data: { name, full_name: name, phone: phone10 },
     },
   });
   if (error) return { ok: false, error: error.message };
@@ -83,7 +83,7 @@ export async function loginWithEmail(
     const up = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: { data: { name, full_name: name } },
     });
     if (up.error) return { ok: false, error: up.error.message };
     if (up.data.session) return { ok: true };
@@ -150,7 +150,7 @@ export async function ensureProfileName(uid: string, name: string): Promise<void
 export async function creditDaneRemote(amount: number): Promise<number | null> {
   if (!supabase || amount <= 0) return null;
   try {
-    const { data, error } = await supabase.rpc("add_dane", { p_amount: amount });
+    const { data, error } = await supabase.rpc("add_dane", { amount });
     if (error) return null;
     return typeof data === "number" ? data : null;
   } catch {
@@ -189,6 +189,19 @@ export async function fetchProducts(): Promise<Product[]> {
     return mapped.length ? mapped : CATALOG;
   } catch {
     return CATALOG;
+  }
+}
+
+export type CatalogSource = "supabase" | "local";
+
+/** Quick health-check against the project (for the connection badge). */
+export async function pingSupabase(): Promise<CatalogSource> {
+  if (!supabase) return "local";
+  try {
+    const { error } = await supabase.from("products").select("id", { head: true, count: "exact" });
+    return error ? "local" : "supabase";
+  } catch {
+    return "local";
   }
 }
 

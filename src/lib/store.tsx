@@ -15,9 +15,11 @@ import {
   ensureProfileName,
   fetchProducts,
   getSessionCustomer,
+  pingSupabase,
   saveOrderRemote,
   signOutUser,
   supabase,
+  type CatalogSource,
 } from "./supabase";
 
 export type View =
@@ -80,6 +82,9 @@ interface StoreShape {
   cartBump: number;
   cartRef: MutableRefObject<HTMLButtonElement | null>;
 
+  /** where the catalogue is coming from right now */
+  dbSource: CatalogSource;
+
   flies: Fly[];
   retireFly: (id: number) => void;
 
@@ -117,6 +122,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sessionBooting, setSessionBooting] = useState(true);
   const [loginOpen, setLoginOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [dbSource, setDbSource] = useState<CatalogSource>("local");
 
   const toast = useCallback((msg: string, tone: "ok" | "warn" = "ok") => {
     const id = uid++;
@@ -131,6 +137,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!alive) return;
       setProducts(p);
       setProductsLoading(false);
+    });
+    pingSupabase().then((s) => {
+      if (alive) setDbSource(s);
     });
     return () => {
       alive = false;
@@ -282,6 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCartOpen,
     cartBump,
     cartRef,
+    dbSource,
     flies,
     retireFly,
     customer,

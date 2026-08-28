@@ -766,7 +766,8 @@ export function LoginModal() {
 
 /* ── footer ── */
 export function Footer() {
-  const { setFilter, nav, view } = useStore();
+  const { setFilter, nav, view, dbSource } = useStore();
+  const live = dbSource === "supabase";
   const goMenu = (cat: string) => {
     setFilter(cat as typeof CATEGORIES[number]["id"]);
     if (view.page !== "home") {
@@ -856,7 +857,33 @@ export function Footer() {
         </div>
 
         <div className="mt-14 pt-6 border-t border-cream/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-cream/45">
-          <p>© 2026 Kapila Dairy · Sab swad surakshit, sab dil khush.</p>
+          <div className="flex items-center gap-4">
+            <p>© 2026 Kapila Dairy · Sab swad surakshit, sab dil khush.</p>
+            <span
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10.5px] font-bold tracking-wide ${
+                live
+                  ? "border-leaf/60 text-cream/85 bg-leaf/15"
+                  : "border-gold/50 text-gold/90 bg-gold/10"
+              }`}
+              title={
+                live
+                  ? "Menu, orders aur khata — sab Supabase se juda hai"
+                  : "Supabase nahi mila — offline daftar chal raha hai"
+              }
+            >
+              <span className="relative flex w-2 h-2">
+                <span
+                  className={`absolute inline-flex w-full h-full rounded-full opacity-60 ${
+                    live ? "bg-leaf animate-ping" : "bg-gold"
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex w-2 h-2 rounded-full ${live ? "bg-leaf" : "bg-gold"}`}
+                />
+              </span>
+              {live ? "SUPABASE LIVE" : "OFFLINE DAFTAR"}
+            </span>
+          </div>
           <p className="font-hand text-lg text-cream/60">admin counter panel — jald aa raha hai</p>
         </div>
       </div>

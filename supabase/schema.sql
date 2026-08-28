@@ -1,11 +1,11 @@
 -- ════════════════════════════════════════════════════════════════════
---  KAPILA DAIRY · Supabase schema v2 · CLEAN INSTALL
---  ⚠️  STEP 0 purana system (v1 tables + loose demo policies) hata deta hai
---  Run: Dashboard → SQL Editor → New query → paste ALL → Run
+--  KAPILA DAIRY · Supabase schema v2 · CLEAN INSTALL (FIXED)
+--  Works on a FRESH project AND on projects with the old v1 tables.
+--  Dashboard → SQL Editor → New query → paste ALL → Run
 --  Safe to re-run (idempotent).
 -- ════════════════════════════════════════════════════════════════════
 
--- ── STEP 0 · PURANA SYSTEM HATAO ────────────────────────────────────
+-- ── STEP 0 · PURANA SYSTEM HATAO (safe even if nothing exists) ──────
 -- 0a. v1 loyalty table (ab profiles use hoti hai, auth se judi hui)
 drop table if exists public.customers cascade;
 
@@ -14,18 +14,13 @@ drop table if exists public.orders cascade;
 
 -- 0c. purane views, functions, triggers
 drop view     if exists public.kapila_daily_revenue;
-drop function if exists public.add_dane(integer);
 drop trigger  if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
+drop function if exists public.add_dane(integer);
 
--- 0d. products pe loose demo write-policies hatao
---     (admin panel ab service-role key se likhega — zyada secure)
-drop policy if exists "products_admin_insert" on public.products;
-drop policy if exists "products_admin_update" on public.products;
-drop policy if exists "products_admin_delete" on public.products;
-drop policy if exists "products_public_read"  on public.products;
-
--- ── STEP 1 · PRODUCTS (catalogue — app sirf padh sakti hai) ─────────
+-- ── STEP 1 · PRODUCTS (catalogue) — PEHLE TABLE BANAo ───────────────
+--  (fresh project pe table abhi exist nahi karti, isliye policies
+--   drop karne se PEHLE table banana zaroori hai)
 create table if not exists public.products (
   id          text primary key,
   name        text not null,
@@ -47,7 +42,7 @@ create table if not exists public.products (
   created_at  timestamptz not null default now()
 );
 
--- agar table pehle se hai toh naye columns add karo
+-- agar table pehle se hai (v1) toh naye columns add karo
 alter table public.products
   add column if not exists heritage text,
   add column if not exists craft    jsonb,
@@ -55,6 +50,13 @@ alter table public.products
   add column if not exists since    integer;
 
 alter table public.products enable row level security;
+
+-- 1b. ab table exist karti hai — purani loose demo write-policies hatao
+--     (admin panel service-role key se likhega — zyada secure)
+drop policy if exists "products_admin_insert" on public.products;
+drop policy if exists "products_admin_update" on public.products;
+drop policy if exists "products_admin_delete" on public.products;
+drop policy if exists "products_public_read"  on public.products;
 
 create policy "products_public_read" on public.products
   for select using (is_active = true);
@@ -75,16 +77,19 @@ create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 
 -- sirf apni row padho
+drop policy if exists "profile_read_own" on public.profiles;
 create policy "profile_read_own" on public.profiles
   for select using (auth.uid() = id);
 
 -- apni row update karo — lekin DANE badalna mana (sirf add_dane() se)
+drop policy if exists "profile_update_own" on public.profiles;
 create policy "profile_update_own" on public.profiles
   for update using (
     auth.uid() = id
     and dane = (select dane from public.profiles where id = auth.uid())
   ) with check (auth.uid() = id);
 
+drop policy if exists "profile_insert_own" on public.profiles;
 create policy "profile_insert_own" on public.profiles
   for insert with check (auth.uid() = id);
 
@@ -172,6 +177,7 @@ create table if not exists public.orders (
 alter table public.orders enable row level security;
 
 -- guest bhi order daal sakta hai (login optional) — lekin jhootha user_id nahi
+drop policy if exists "orders_insert" on public.orders;
 create policy "orders_insert" on public.orders
   for insert with check (
     user_id is null or user_id = auth.uid()
@@ -179,6 +185,7 @@ create policy "orders_insert" on public.orders
 
 -- logged-in customer sirf APNE orders padh sakta hai
 -- (guest orders counter QR scan se milte hain — admin service-role se padhega)
+drop policy if exists "orders_read_own" on public.orders;
 create policy "orders_read_own" on public.orders
   for select using (user_id is not null and user_id = auth.uid());
 
@@ -268,10 +275,9 @@ on conflict (id) do update set
   story    = excluded.story,
   units    = excluded.units;
 
--- ════════════════════════════════════════════════════════════════════
---  BAS! Ab dashboard mein yeh karna:
---  1. Authentication → Providers → Phone → ENABLE
---     → "Test Phone Numbers" mein +919876543210 add karo (OTP: 123456)
---  2. Authentication → Settings → Email → (demo ke liye) "Confirm email" OFF
---  3. App refresh karo → Login → OTP aayega → dane khata chalu!
+-- ── DONE! ───────────────────────────────────────────────────────────
+--  Ab dashboard mein:
+--  1. Authentication → Providers → Phone → Enable
+--     → Test Phone Numbers mein +919876543210 add karo (OTP = 123456)
+--  2. Authentication → Settings → Email → "Confirm email" OFF (demo ke liye)
 -- ════════════════════════════════════════════════════════════════════
