@@ -1,5 +1,5 @@
 /* ── Kapila Dairy · app shell: routing + Lenis + transitions ──────── */
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Lenis from "lenis";
 import gsap from "gsap";
@@ -14,6 +14,33 @@ import { Navbar, Footer, CustomCursor, Toasts, FlyLayer, LoginModal } from "./co
 gsap.registerPlugin(ScrollTrigger);
 
 const AdminApp = lazy(() => import("./admin/AdminApp"));
+
+/* If a lazy chunk fails to load (network/host hiccup), show retry — never a blank page. */
+class ChunkBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="min-h-screen grid place-items-center bg-[#14100c] text-[#ffc24b] font-mono text-sm p-6">
+          <div className="text-center">
+            <p className="text-xl mb-2">Counter load nahi hua</p>
+            <p className="text-[#ffc24b]/60 mb-4 text-xs">Chunk fetch fail ho gaya. Dobara try karo.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 border border-[#ffc24b]/50 rounded hover:bg-[#ffc24b]/10 transition-colors"
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /* ── route detection (works on any static host) ── */
 function getHashRoute(): { admin: boolean; pay: string | null } {

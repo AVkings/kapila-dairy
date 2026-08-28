@@ -8,7 +8,7 @@ import {
 import {
   attemptLogin, endAdminSession, isAdminSession, lockRemainingMs, MAX_ATTEMPTS,
 } from "../lib/admin";
-import FULL_SQL from "../../supabase/kapila_FULL.sql?raw";
+import { FULL_SQL } from "../lib/sqlText";
 import { AdminHome } from "./AdminHome";
 import { AdminScan } from "./AdminScan";
 import { AdminOrders, AdminCustomers, AdminProducts } from "./AdminPanels";
