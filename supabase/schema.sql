@@ -153,6 +153,42 @@ $$;
 revoke execute on function public.add_dane(integer) from public;
 grant  execute on function public.add_dane(integer) to authenticated;
 
+-- ── STEP 3b · REDEEM_DANE (dane kharch karke FREE inaam — RPC) ──────
+--  client apne khate se dane sirf tab hi kaat sakta hai jab balance kaafi ho
+create or replace function public.redeem_dane(amount integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_total integer;
+begin
+  if auth.uid() is null then
+    raise exception 'Login zaroori hai — khata pehle kholo.';
+  end if;
+  if amount is null or amount <= 0 or amount > 100000 then
+    raise exception 'Dane ki ginti galat hai.';
+  end if;
+
+  update public.profiles
+     set dane = dane - amount,
+         updated_at = now()
+   where id = auth.uid()
+     and dane >= amount
+  returning dane into new_total;
+
+  if new_total is null then
+    raise exception 'Itna dana khate mein nahi hai.';
+  end if;
+
+  return new_total;
+end;
+$$;
+
+revoke execute on function public.redeem_dane(integer) from public;
+grant  execute on function public.redeem_dane(integer) to authenticated;
+
 -- ── STEP 4 · ORDERS (auth-linked, counter QR ke liye) ───────────────
 create table if not exists public.orders (
   id             bigint generated always as identity primary key,
@@ -163,9 +199,10 @@ create table if not exists public.orders (
   phone          text not null,
   pickup         text,
   note           text,
-  payment        text not null check (payment in ('online','counter')),
+  payment        text not null check (payment in ('online','counter','redeem')),
   paid           boolean not null default false,
-  payment_id     text,                                  -- razorpay payment id
+  payment_id     text,
+  redeem         jsonb,                                 -- {reward, daneSpent} for free reward orders                                  -- razorpay payment id
   total          numeric not null,
   grains_earned  integer not null default 0,
   items          jsonb not null,                        -- [{id,name,pack,qty,price}]
@@ -174,7 +211,11 @@ create table if not exists public.orders (
   created_at     timestamptz not null default now()
 );
 
-alter table public.orders enable row level security;
+-- migration-safe: purane DBs ko naya payment value + redeem column do
+alter table public.orders drop constraint if exists orders_payment_check;
+alter table public.orders
+  add constraint orders_payment_check check (payment in ('online','counter','redeem'));
+alter table public.orders add column if not exists redeem jsonb;
 
 -- guest bhi order daal sakta hai (login optional) — lekin jhootha user_id nahi
 drop policy if exists "orders_insert" on public.orders;

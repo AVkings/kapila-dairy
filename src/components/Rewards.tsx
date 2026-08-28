@@ -1,22 +1,88 @@
-/* ── Kapila Dairy · Sakhar ke Dane loyalty section ─────────────────── */
-import { motion } from "framer-motion";
-import { ArrowRight, Check, Sparkles, User } from "lucide-react";
+/* ── Kapila Dairy · Sakhar ke Dane loyalty + redemption ────────────── */
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Check, Gift, Sparkles, User, X } from "lucide-react";
+import confetti from "canvas-confetti";
 import { useStore } from "../lib/store";
-import { REWARD_TIERS } from "../lib/data";
+import { makeOrderId, REWARD_TIERS, type Order, type RewardTier } from "../lib/data";
+import { spendDaneRemote } from "../lib/supabase";
 import { RollCounter, SugarParticles } from "./MotionBits";
 import { scrollToId } from "../lib/scroll";
 
 const STEPS = [
   { n: "01", t: "Order karo", d: "jitna chaaho, jitna khao" },
   { n: "02", t: "Dane judo", d: "har ₹10 pe 1 sakhar ka dana" },
-  { n: "03", t: "Inaam uthao", d: "counter pe dana dikhao, mithai lo" },
+  { n: "03", t: "Inaam uthao", d: "dane se FREE order, QR dikhao" },
 ];
 
 export default function Rewards() {
-  const { customer, setLoginOpen } = useStore();
+  const { customer, setLoginOpen, patchCustomer, nav, placeOrder, toast } = useStore();
   const points = customer?.dane ?? 0;
   const nextTier = REWARD_TIERS.find((t) => t.grains > points);
   const barPct = Math.min(100, Math.round((points / 1000) * 100));
+
+  const [confirmTier, setConfirmTier] = useState<RewardTier | null>(null);
+  const [redeeming, setRedeeming] = useState(false);
+
+  const startRedeem = (t: RewardTier) => {
+    if (!customer) {
+      setLoginOpen(true);
+      return;
+    }
+    setConfirmTier(t);
+  };
+
+  const doRedeem = async () => {
+    if (!confirmTier || !customer || redeeming) return;
+    setRedeeming(true);
+
+    // 1. deduct dane server-side (safe RPC)
+    const newBalance = await spendDaneRemote(confirmTier.grains);
+    if (newBalance === null) {
+      setRedeeming(false);
+      setConfirmTier(null);
+      toast("Dane kat nahi paaye — dobara try karo.", "warn");
+      return;
+    }
+    patchCustomer({ dane: newBalance });
+
+    // 2. build the FREE reward order (no cost charged)
+    const order: Order = {
+      id: makeOrderId(),
+      createdAt: new Date().toISOString(),
+      customerName: customer.name,
+      phone: customer.phone,
+      pickup: "Aaj — counter se",
+      items: [
+        {
+          key: `redeem-${confirmTier.grains}`,
+          productId: `reward-${confirmTier.grains}`,
+          name: confirmTier.reward,
+          hindi: confirmTier.hindi,
+          image: confirmTier.img,
+          unit: { label: "FREE Inaam", price: 0 },
+          qty: 1,
+        },
+      ],
+      total: 0,
+      payment: "redeem",
+      paid: true,
+      grainsEarned: 0,
+      redeem: { reward: confirmTier.reward, daneSpent: confirmTier.grains },
+    };
+
+    placeOrder(order);
+    setRedeeming(false);
+    setConfirmTier(null);
+
+    confetti({
+      particleCount: 120,
+      spread: 75,
+      origin: { y: 0.6 },
+      colors: ["#FF9933", "#FFD700", "#FFFEF0"],
+    });
+    nav({ page: "success", order });
+  };
 
   return (
     <section
@@ -160,6 +226,20 @@ export default function Rewards() {
                     </p>
                     <p className="font-bold text-[15px] mt-2 leading-tight">{t.reward}</p>
                     <p className="font-hand text-lg text-saffron mt-0.5">{t.hindi}</p>
+
+                    {achieved ? (
+                      <button
+                        onClick={() => startRedeem(t)}
+                        className="mt-3 w-full h-10 rounded-xl bg-gold text-espresso-deep text-[13px] font-bold flex items-center justify-center gap-1.5 hover:bg-saffron transition-colors"
+                        data-hover
+                      >
+                        <Gift size={15} /> Inaam lo — FREE
+                      </button>
+                    ) : (
+                      <p className="mt-3 text-[11px] font-semibold text-cream/40 text-center">
+                        {t.grains - points} dane aur chahiye
+                      </p>
+                    )}
                   </motion.div>
                 );
               })}
@@ -177,6 +257,100 @@ export default function Rewards() {
           </div>
         </div>
       </div>
+
+      {/* redemption confirm modal */}
+      <AnimatePresence>
+        {confirmTier && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !redeeming && setConfirmTier(null)}
+              className="fixed inset-0 z-[86] bg-espresso-deep/70 backdrop-blur-sm"
+            />
+            <div className="fixed inset-0 z-[87] grid place-items-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85, y: 26 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 16 }}
+                transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                className="pointer-events-auto w-full max-w-sm bg-cream text-espresso rounded-[1.6rem] p-6 shadow-lift border border-gold/50 relative overflow-hidden"
+              >
+                <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-gold/25 blur-2xl" />
+                <button
+                  onClick={() => !redeeming && setConfirmTier(null)}
+                  className="absolute top-4 right-4 w-9 h-9 grid place-items-center rounded-full border border-espresso/20 hover:bg-espresso hover:text-cream transition-colors"
+                  data-hover
+                  aria-label="Band karo"
+                >
+                  <X size={16} />
+                </button>
+
+                <div className="flex items-center gap-4">
+                  <img
+                    src={confirmTier.img}
+                    alt={confirmTier.reward}
+                    draggable={false}
+                    className="w-20 h-20 rounded-2xl object-cover ring-2 ring-gold shadow-card"
+                  />
+                  <div>
+                    <p className="text-[11px] font-bold tracking-[0.22em] text-saffron-deep">DANE KA INAAM</p>
+                    <h3 className="font-display font-black text-2xl leading-tight mt-1">{confirmTier.reward}</h3>
+                    <p className="font-hand text-lg text-saffron-deep">{confirmTier.hindi}</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 bg-sand/60 border border-gold-deep/25 rounded-xl px-4 py-3 text-sm font-semibold flex items-center justify-between">
+                  <span className="text-espresso/70">Kharch honge</span>
+                  <span className="font-display font-black text-xl text-saffron-deep">
+                    −{confirmTier.grains} dane
+                  </span>
+                </div>
+                <div className="mt-2 bg-sand/60 border border-gold-deep/25 rounded-xl px-4 py-3 text-sm font-semibold flex items-center justify-between">
+                  <span className="text-espresso/70">Aapko dena hoga</span>
+                  <span className="font-display font-black text-xl text-leaf">₹0 — FREE</span>
+                </div>
+
+                <p className="text-[12px] text-espresso/55 text-center mt-4 leading-relaxed">
+                  Counter pe QR dikhao, bhaiya inaam thama denge.
+                  <br />
+                  Ek rupaya nahi lagega!
+                </p>
+
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => setConfirmTier(null)}
+                    disabled={redeeming}
+                    className="flex-1 h-12 rounded-xl border-[1.5px] border-espresso/25 font-bold text-espresso/70 hover:bg-sand/50 transition-colors disabled:opacity-50"
+                    data-hover
+                  >
+                    Nahi
+                  </button>
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={doRedeem}
+                    disabled={redeeming}
+                    className="flex-1 h-12 rounded-xl bg-saffron-deep text-cream font-bold flex items-center justify-center gap-2 hover:bg-espresso transition-colors disabled:opacity-60"
+                    data-hover
+                  >
+                    {redeeming ? (
+                      <>
+                        <span className="w-4 h-4 rounded-full border-2 border-cream/30 border-t-cream animate-spin" />
+                        Dane kat rahe…
+                      </>
+                    ) : (
+                      <>
+                        <Gift size={16} /> Pakka karo
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

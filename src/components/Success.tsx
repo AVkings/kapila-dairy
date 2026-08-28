@@ -101,7 +101,16 @@ function QRCard({ order }: { order: Order }) {
       </div>
 
       <div className="mt-4 bg-parchment rounded-2xl p-4 space-y-1.5">
-        {order.payment === "online" ? (
+        {order.redeem ? (
+          <>
+            <p className="text-[12.5px] font-bold text-gold-deep flex items-center gap-1.5">
+              <Sparkles size={13} /> DANE SE FREE INAAM
+            </p>
+            <p className="text-[12px] font-semibold text-espresso/60">
+              {order.redeem.daneSpent} dane kharch hue — ek rupaya nahi. QR dikhao, inaam lo.
+            </p>
+          </>
+        ) : order.payment === "online" ? (
           <>
             <p className="text-[12.5px] font-bold text-leaf flex items-center gap-1.5">
               <Sparkles size={13} /> PAID ONLINE {order.paymentId ? `· ${order.paymentId.slice(0, 14)}…` : ""}
@@ -206,7 +215,15 @@ export default function SuccessPage({ order }: { order: Order }) {
             transition={{ delay: 0.25, duration: 0.55 }}
             className="font-display font-black text-5xl sm:text-6xl text-espresso leading-[0.95]"
           >
-            Order <span className="italic text-saffron-deep">pakka!</span>
+            {order.redeem ? (
+              <>
+                Inaam <span className="italic text-gold-deep">FREE!</span>
+              </>
+            ) : (
+              <>
+                Order <span className="italic text-saffron-deep">pakka!</span>
+              </>
+            )}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 14 }}
@@ -214,7 +231,9 @@ export default function SuccessPage({ order }: { order: Order }) {
             transition={{ delay: 0.4, duration: 0.5 }}
             className="font-hand text-2xl text-espresso/65 mt-2"
           >
-            {order.customerName.split(" ")[0]} ji, mithai taiyaar hone lagi…
+            {order.redeem
+              ? `${order.customerName.split(" ")[0]} ji, dane se ${order.redeem.reward} mil gaya — ek rupaya nahi!`
+              : `${order.customerName.split(" ")[0]} ji, mithai taiyaar hone lagi…`}
           </motion.p>
           <motion.div
             initial={{ opacity: 0 }}
@@ -225,7 +244,11 @@ export default function SuccessPage({ order }: { order: Order }) {
             <span className="bg-espresso text-cream text-[12px] font-bold tracking-wider px-3.5 py-1.5 rounded-full">
               {order.id}
             </span>
-            {order.paid ? (
+            {order.redeem ? (
+              <span className="bg-gold text-espresso-deep text-[12px] font-bold tracking-wider px-3.5 py-1.5 rounded-full">
+                DANE SE FREE
+              </span>
+            ) : order.paid ? (
               <span className="bg-leaf text-cream text-[12px] font-bold tracking-wider px-3.5 py-1.5 rounded-full">
                 PAID ONLINE
               </span>
@@ -255,8 +278,8 @@ export default function SuccessPage({ order }: { order: Order }) {
             <ol className="grid sm:grid-cols-3 gap-4">
               {[
                 { icon: ScanLine, t: "Counter pe jao", d: "Neeche wala QR dikha do" },
-                { icon: ShoppingBag, t: "Thaila uthao", d: "Garam garam, tula hua" },
-                { icon: Sparkles, t: "Dane judenge", d: `+${order.grainsEarned} sakhar ke dane` },
+                { icon: ShoppingBag, t: order.redeem ? "Inaam uthao" : "Thaila uthao", d: order.redeem ? "Bilkul FREE — dana ka inaam" : "Garam garam, tula hua" },
+                { icon: Sparkles, t: order.redeem ? "Dane kharch hue" : "Dane judenge", d: order.redeem ? `−${order.redeem.daneSpent} sakhar ke dane` : `+${order.grainsEarned} sakhar ke dane` },
               ].map((s, i) => (
                 <li key={s.t} className="relative bg-parchment/70 rounded-2xl p-5">
                   <span className="absolute -top-2.5 -left-2 grid place-items-center w-7 h-7 rounded-full bg-saffron-deep text-cream text-xs font-black">

@@ -12,9 +12,6 @@ export const supabase: SupabaseClient | null =
 export const supabaseReady = !!supabase;
 
 /* ── helpers ── */
-const toE164 = (phone10: string) =>
-  phone10.startsWith("+") ? phone10 : `+91${phone10.replace(/\D/g, "")}`;
-
 export interface ProfileRow {
   id: string;
   name: string;
@@ -32,45 +29,12 @@ export const profileToCustomer = (row: ProfileRow): Customer => ({
   authed: true,
 });
 
-/* ── AUTH · phone OTP ──────────────────────────────────────────────── */
-
-/** Step 1 — send OTP to phone. Creates the user if new (with naam). */
-export async function sendPhoneOtp(
-  name: string,
-  phone10: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!supabase) return { ok: false, error: "offline" };
-  const { error } = await supabase.auth.signInWithOtp({
-    phone: toE164(phone10),
-    options: {
-      shouldCreateUser: true,
-      data: { name, full_name: name, phone: phone10 },
-    },
-  });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
-}
-
-/** Step 2 — verify the 6-digit OTP. */
-export async function verifyPhoneOtp(
-  phone10: string,
-  token: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!supabase) return { ok: false, error: "offline" };
-  const { error } = await supabase.auth.verifyOtp({
-    phone: toE164(phone10),
-    token,
-    type: "sms",
-  });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
-}
-
-/* ── AUTH · email (fallback / demo) ────────────────────────────────── */
+/* ── AUTH · email + password (phone saved in khata metadata) ───────── */
 export async function loginWithEmail(
   name: string,
   email: string,
-  password: string
+  password: string,
+  phone10: string
 ): Promise<{ ok: boolean; error?: string; needsConfirm?: boolean }> {
   if (!supabase) return { ok: false, error: "offline" };
 
@@ -83,7 +47,7 @@ export async function loginWithEmail(
     const up = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name, full_name: name } },
+      options: { data: { name, full_name: name, phone: phone10 } },
     });
     if (up.error) return { ok: false, error: up.error.message };
     if (up.data.session) return { ok: true };
@@ -158,6 +122,18 @@ export async function creditDaneRemote(amount: number): Promise<number | null> {
   }
 }
 
+/** Redeem (spend) dane via the safe server-side RPC. Returns new balance. */
+export async function spendDaneRemote(amount: number): Promise<number | null> {
+  if (!supabase || amount <= 0) return null;
+  try {
+    const { data, error } = await supabase.rpc("redeem_dane", { amount });
+    if (error) return null;
+    return typeof data === "number" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 /* ── PRODUCTS / ORDERS ─────────────────────────────────────────────── */
 
 /** Pull live products; fall back to the built-in catalogue. */
@@ -219,6 +195,7 @@ export async function saveOrderRemote(order: Order, userId?: string | null): Pro
       payment: order.payment,
       paid: order.paid,
       payment_id: order.paymentId ?? null,
+      redeem: order.redeem ?? null,
       total: order.total,
       grains_earned: order.grainsEarned,
       items: order.items.map((i) => ({

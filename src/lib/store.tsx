@@ -94,6 +94,8 @@ interface StoreShape {
   setLoginOpen: (b: boolean) => void;
   /** called after a successful Supabase auth — credits pending dane, returns credited */
   onAuthedCustomer: (c: Customer) => number;
+  /** update the logged-in customer (e.g. after a dane redemption) */
+  patchCustomer: (patch: Partial<Customer>) => void;
   logout: () => void;
 
   placeOrder: (o: Order) => void;
@@ -240,6 +242,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return credited;
   }, []);
 
+  const patchCustomer = useCallback((patch: Partial<Customer>) => {
+    setCustomer((c) => {
+      if (!c) return c;
+      const next = { ...c, ...patch };
+      persist(LS.customer, next);
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     void signOutUser();
     setCustomer(null);
@@ -299,6 +310,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loginOpen,
     setLoginOpen,
     onAuthedCustomer,
+    patchCustomer,
     logout,
     placeOrder,
     toasts,

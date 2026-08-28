@@ -39,7 +39,7 @@ export interface CartItem {
   qty: number;
 }
 
-export type PaymentMethod = "online" | "counter";
+export type PaymentMethod = "online" | "counter" | "redeem";
 
 export interface Order {
   id: string;
@@ -54,6 +54,8 @@ export interface Order {
   paid: boolean;
   paymentId?: string;
   grainsEarned: number;
+  /** set when the order is a FREE dane-reward redemption */
+  redeem?: { reward: string; daneSpent: number };
 }
 
 /** Logged-in customer (Supabase Auth + profiles table). */
@@ -377,13 +379,14 @@ export interface RewardTier {
   grains: number;
   reward: string;
   hindi: string;
+  img: string;
 }
 
 export const REWARD_TIERS: RewardTier[] = [
-  { grains: 100, reward: "250ml Taaza Doodh", hindi: "फ्री दूध" },
-  { grains: 250, reward: "2 Kesar Pede", hindi: "मुँह मीठा" },
-  { grains: 500, reward: "250g Motichoor Laddoo", hindi: "लड्डू डिब्बा" },
-  { grains: 1000, reward: "500g Kaju Katli", hindi: "राजवाड़ा इनाम" },
+  { grains: 100, reward: "250ml Taaza Doodh", hindi: "फ्री दूध", img: IMG.milk },
+  { grains: 250, reward: "2 Kesar Pede", hindi: "मुँह मीठा", img: IMG.platter },
+  { grains: 500, reward: "250g Motichoor Laddoo", hindi: "लड्डू डिब्बा", img: IMG.laddoo },
+  { grains: 1000, reward: "500g Kaju Katli", hindi: "राजवाड़ा इनाम", img: IMG.kaju },
 ];
 
 export const grainsFrom = (total: number) => Math.floor(total / 10);
@@ -408,10 +411,15 @@ export const orderQRPayload = (o: Order) =>
     at: o.createdAt,
     name: o.customerName,
     phone: o.phone,
-    pay: o.payment === "online" ? "ONLINE-PAID" : "PAY-AT-COUNTER",
+    pay: o.redeem
+      ? "DANE-REDEEM-FREE"
+      : o.payment === "online"
+        ? "ONLINE-PAID"
+        : "PAY-AT-COUNTER",
     payId: o.paymentId ?? null,
     total: o.total,
     pickup: o.pickup,
+    redeem: o.redeem ?? null,
     items: o.items.map((i) => ({
       item: i.name,
       qty: i.qty,
