@@ -22,8 +22,14 @@ import {
   LoginModal,
 } from "./components/Chrome";
 
-/* admin terminal is code-split — customers never download it */
+/* admin terminal + pay page are code-split */
 const AdminApp = lazy(() => import("./admin/AdminApp"));
+const PayPage = lazy(() => import("./components/PayPage"));
+
+function detectPayOrder(): string | null {
+  const m = window.location.hash.match(/^#\/pay\/([A-Za-z0-9-]+)/);
+  return m ? m[1] : null;
+}
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -127,6 +133,28 @@ function Shell() {
 
 export default function App() {
   const isAdmin = useIsAdminRoute();
+  const [payOrder, setPayOrder] = useState<string | null>(() => detectPayOrder());
+
+  useEffect(() => {
+    const onChange = () => setPayOrder(detectPayOrder());
+    window.addEventListener("hashchange", onChange);
+    setPayOrder(detectPayOrder());
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
+
+  const loader = (
+    <div className="min-h-screen grid place-items-center bg-cream text-saffron-deep font-hand text-2xl">
+      ek pal…
+    </div>
+  );
+
+  if (payOrder)
+    return (
+      <Suspense fallback={loader}>
+        <PayPage orderId={payOrder} />
+      </Suspense>
+    );
+
   if (isAdmin)
     return (
       <Suspense

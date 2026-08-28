@@ -1,10 +1,21 @@
-/* ── Kapila Counter · scan customer ticket → collect payment ───────── */
+/* ── Kapila Counter · scan ticket → collect payment (Razorpay link) ── */
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Html5Qrcode } from "html5-qrcode";
 import QRCode from "react-qr-code";
-import { Camera, CameraOff, CheckCircle2, Banknote, QrCode, Search, Sparkles } from "lucide-react";
-import { markPaid, setOrderStatus, UPI_ID, SHOP_NAME } from "../lib/admin";
+import confetti from "canvas-confetti";
+import {
+  Camera,
+  CameraOff,
+  CheckCircle2,
+  Banknote,
+  QrCode,
+  Search,
+  Sparkles,
+  Smartphone,
+} from "lucide-react";
+import { markPaid, setOrderStatus, SHOP_NAME } from "../lib/admin";
+import { getPayOrder } from "../lib/supabase";
 import { inr } from "../lib/data";
 
 interface TicketItem {
@@ -29,13 +40,19 @@ interface Ticket {
 
 const SCANNER_ID = "kapila-qr-region";
 
+/** the exact-amount Razorpay pay page customers open after scanning */
+const payUrl = (orderId: string) =>
+  `${window.location.origin}${window.location.pathname}#/pay/${orderId}`;
+
 export function AdminScan() {
   const [scanning, setScanning] = useState(false);
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [paid, setPaid] = useState(false);
   const [collected, setCollected] = useState(false);
-  const [showUpi, setShowUpi] = useState(false);
+  const [showLink, setShowLink] = useState(false);
+  const [justPaid, setJustPaid] = useState(false);
   const [manualId, setManualId] = useState("");
+  const [looking, setLooking] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -54,7 +71,6 @@ export function AdminScan() {
     }
     setScanning(false);
   };
-
   useEffect(() => () => void stopScanner(), []);
 
   const accept = (raw: string) => {
@@ -64,7 +80,8 @@ export function AdminScan() {
       setTicket(t);
       setPaid(t.pay === "ONLINE-PAID" || t.pay === "DANE-REDEEM-FREE");
       setCollected(false);
-      setShowUpi(false);
+      setShowLink(false);
+      setJustPaid(false);
       setErr("");
       void stopScanner();
     } catch {
@@ -85,11 +102,33 @@ export function AdminScan() {
         (text) => accept(text),
         () => undefined
       );
-    } catch (e) {
+    } catch {
       setCamErr("Camera nahi khula — permission do, ya neeche order ID daalo.");
       setScanning(false);
     }
   };
+
+  /* ── LIVE POLL: notify the moment the customer pays online ── */
+  useEffect(() => {
+    if (!ticket || paid) return;
+    const iv = window.setInterval(async () => {
+      const o = await getPayOrder(ticket.order);
+      if (o && o.paid) {
+        setPaid(true);
+        setJustPaid(true);
+        setShowLink(false);
+        confetti({
+          particleCount: 110,
+          spread: 90,
+          startVelocity: 42,
+          origin: { x: 0.5, y: 0.4 },
+          colors: ["#FF9933", "#FFD700", "#FFC24B", "#2F7D3B"],
+          zIndex: 96,
+        });
+      }
+    }, 2500);
+    return () => window.clearInterval(iv);
+  }, [ticket, paid]);
 
   const collectCash = async () => {
     if (!ticket) return;
@@ -98,6 +137,7 @@ export function AdminScan() {
     setBusy(false);
     if (res.error) return setErr("Update nahi hua: " + res.error);
     setPaid(true);
+    setJustPaid(true);
   };
 
   const handOver = async () => {
@@ -109,9 +149,31 @@ export function AdminScan() {
     setCollected(true);
   };
 
-  const upiUrl = ticket
-    ? `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${ticket.total}&cu=INR&tn=${encodeURIComponent(ticket.order)}`
-    : "";
+  /* manual lookup by order ID */
+  const lookup = async () => {
+    const id = manualId.trim().toUpperCase();
+    if (!id) return setErr("Order ID likho pehle — jaise KD-XXXX.");
+    setErr("");
+    setLooking(true);
+    const o = await getPayOrder(id);
+    setLooking(false);
+    if (!o) return setErr(`Order "${id}" nahi mila — ID check karo.`);
+    setTicket({
+      order: o.order_id,
+      at: new Date().toISOString(),
+      name: o.customer_name,
+      phone: o.phone,
+      pay: o.redeem ? "DANE-REDEEM-FREE" : o.paid ? "ONLINE-PAID" : "PAY-AT-COUNTER",
+      total: o.total,
+      pickup: o.pickup ?? undefined,
+      redeem: o.redeem,
+      items: o.items.map((i) => ({ item: i.name, qty: i.qty, pack: i.pack, amt: i.price * i.qty })),
+    });
+    setPaid(o.paid || !!o.redeem);
+    setCollected(o.status === "collected");
+    setShowLink(false);
+    setJustPaid(false);
+  };
 
   return (
     <div className="grid lg:grid-cols-[1fr_1.1fr] gap-5 items-start">
@@ -181,16 +243,16 @@ export function AdminScan() {
             <input
               value={manualId}
               onChange={(e) => setManualId(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && void lookup()}
               placeholder="KD-XXXX"
               className="led flex-1 h-11 px-4 rounded-lg bg-coal-3 border border-cream/12 text-cream placeholder:text-cream/25 focus:border-led text-[14px]"
             />
             <button
-              onClick={() =>
-                setErr("Order ID se dhundhne ke liye list check karo — scan zyada aasaan hai!")
-              }
-              className="flex items-center gap-2 h-11 px-4 rounded-lg bg-coal-3 border border-cream/15 text-[13px] font-bold text-cream/70 hover:text-led hover:border-led transition-colors"
+              onClick={() => void lookup()}
+              disabled={looking}
+              className="flex items-center gap-2 h-11 px-4 rounded-lg bg-coal-3 border border-cream/15 text-[13px] font-bold text-cream/70 hover:text-led hover:border-led transition-colors disabled:opacity-50"
             >
-              <Search size={15} /> Dhundo
+              <Search size={15} /> {looking ? "Dhundh rahe…" : "Dhundo"}
             </button>
           </div>
           {err && <p className="text-chili text-[12.5px] font-bold mt-3">{err}</p>}
@@ -222,6 +284,34 @@ export function AdminScan() {
               transition={{ type: "spring", stiffness: 260, damping: 24 }}
               className="bg-cream text-espresso rounded-xl shadow-lift overflow-hidden ticket-notch relative"
             >
+              {/* live payment alert */}
+              <AnimatePresence>
+                {justPaid && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    className="overflow-hidden bg-leaf text-cream"
+                  >
+                    <div className="px-5 py-3 flex items-center gap-3">
+                      <motion.span
+                        animate={{ scale: [1, 1.25, 1] }}
+                        transition={{ duration: 0.8, repeat: 2 }}
+                      >
+                        <Sparkles size={20} className="text-gold" />
+                      </motion.span>
+                      <div>
+                        <p className="font-display font-black text-[15px] leading-none">
+                          PAYMENT AAYA — {inr(ticket.total)} ONLINE!
+                        </p>
+                        <p className="text-[11.5px] font-semibold text-cream/80 mt-0.5">
+                          Razorpay se pakka paisa · thaila de do
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* header */}
               <div className="bg-espresso-deep text-cream px-5 py-4 flex items-center justify-between">
                 <div>
@@ -264,11 +354,7 @@ export function AdminScan() {
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] font-bold tracking-wider text-espresso/55">KUL JOD</span>
                   <span className="font-display font-black text-3xl">
-                    {ticket.redeem ? (
-                      <span className="text-leaf">FREE</span>
-                    ) : (
-                      inr(ticket.total)
-                    )}
+                    {ticket.redeem ? <span className="text-leaf">FREE</span> : inr(ticket.total)}
                   </span>
                 </div>
 
@@ -279,7 +365,11 @@ export function AdminScan() {
                       <Sparkles size={13} /> Dane se free · {ticket.redeem.daneSpent} dane
                     </span>
                   )}
-                  {paid && !ticket.redeem && <span className="stamp text-leaf">PAID · {ticket.pay}</span>}
+                  {paid && !ticket.redeem && (
+                    <span className="stamp text-leaf">
+                      PAID · {justPaid || ticket.pay === "ONLINE-PAID" ? "RAZORPAY ONLINE" : ticket.pay}
+                    </span>
+                  )}
                   {!paid && <span className="stamp text-gold">PAY AT COUNTER</span>}
                   {collected && <span className="stamp text-saffron-deep">THAILA DIYA</span>}
                 </div>
@@ -298,10 +388,14 @@ export function AdminScan() {
                       <Banknote size={16} /> {busy ? "…" : "Cash liya — PAID"}
                     </motion.button>
                     <button
-                      onClick={() => setShowUpi((v) => !v)}
-                      className="flex items-center gap-2 h-11 px-5 rounded-lg bg-espresso text-cream text-[13.5px] font-bold hover:bg-espresso-deep"
+                      onClick={() => setShowLink((v) => !v)}
+                      className={`flex items-center gap-2 h-11 px-5 rounded-lg text-[13.5px] font-bold transition-colors ${
+                        showLink
+                          ? "bg-led text-coal"
+                          : "bg-espresso text-cream hover:bg-espresso-deep"
+                      }`}
                     >
-                      <QrCode size={16} /> UPI QR dikhao
+                      <QrCode size={16} /> Razorpay QR dikhao
                     </button>
                   </>
                 )}
@@ -322,9 +416,9 @@ export function AdminScan() {
                 )}
               </div>
 
-              {/* UPI QR */}
+              {/* Razorpay exact-amount QR */}
               <AnimatePresence>
-                {showUpi && !paid && (
+                {showLink && !paid && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -332,15 +426,28 @@ export function AdminScan() {
                     className="overflow-hidden bg-espresso-deep"
                   >
                     <div className="px-5 py-5 flex items-center gap-5">
-                      <div className="bg-cream p-3 rounded-xl shrink-0">
-                        <QRCode value={upiUrl} size={132} fgColor="#241410" bgColor="#FFFFFF" level="M" />
+                      <div className="bg-cream p-3 rounded-xl shrink-0 relative">
+                        <QRCode value={payUrl(ticket.order)} size={132} fgColor="#241410" bgColor="#FFFFFF" level="M" />
+                        <span className="absolute -top-2 -right-2 grid place-items-center w-7 h-7 rounded-full bg-saffron text-espresso-deep">
+                          <Smartphone size={14} />
+                        </span>
                       </div>
                       <div className="text-cream">
                         <p className="font-display font-bold text-lg leading-tight">Customer se scan karwao</p>
-                        <p className="led text-[12px] text-gold mt-1">{inr(ticket.total)} · {ticket.order}</p>
-                        <p className="text-[11.5px] font-semibold text-cream/55 mt-1.5 leading-relaxed">
-                          UPI app se pay hote hi "Cash liya — PAID" daba do.
+                        <p className="led text-[12px] text-gold mt-1">
+                          {inr(ticket.total)} · exact amount · Razorpay
                         </p>
+                        <p className="text-[11.5px] font-semibold text-cream/55 mt-1.5 leading-relaxed">
+                          Pay hote hi <b className="text-led">yahan apne aap notification</b> aayegi —
+                          kuch dabana nahi padega.
+                        </p>
+                        <span className="inline-flex items-center gap-1.5 mt-2 text-[10.5px] font-bold text-led">
+                          <span className="relative flex w-2 h-2">
+                            <span className="absolute inline-flex w-full h-full rounded-full bg-led opacity-60 animate-ping" />
+                            <span className="relative inline-flex w-2 h-2 rounded-full bg-led" />
+                          </span>
+                          PAYMENT KA INTEZAAR…
+                        </span>
                       </div>
                     </div>
                   </motion.div>

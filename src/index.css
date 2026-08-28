@@ -80,10 +80,19 @@ body {
   overflow-x: hidden;
 }
 
-/* custom cursor only on precise pointers */
+/* custom cursor — native pointer is hidden only while the JS cursor is live */
 @media (hover: hover) and (pointer: fine) {
-  html, body, a, button, [role="button"], label, summary, .cursorable { cursor: none; }
-  input, textarea, select { cursor: text; }
+  html.has-custom-cursor,
+  html.has-custom-cursor body,
+  html.has-custom-cursor a,
+  html.has-custom-cursor button,
+  html.has-custom-cursor [role="button"],
+  html.has-custom-cursor label,
+  html.has-custom-cursor summary,
+  html.has-custom-cursor .cursorable { cursor: none; }
+  html.has-custom-cursor input,
+  html.has-custom-cursor textarea,
+  html.has-custom-cursor select { cursor: text; }
 }
 @media (hover: none), (pointer: coarse) {
   .custom-cursor-root { display: none !important; }

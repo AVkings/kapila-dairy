@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import QRCode from "react-qr-code";
 import { animate } from "animejs";
 import confetti from "canvas-confetti";
-import { ArrowRight, RefreshCw, ScanLine, ShoppingBag, Sparkles, User } from "lucide-react";
+import { ArrowRight, RefreshCw, ScanLine, ShoppingBag, Smartphone, Sparkles, User } from "lucide-react";
+import { payWithRazorpay } from "../lib/razorpay";
+import { confirmOnlinePayment } from "../lib/supabase";
 import { useStore } from "../lib/store";
 import {
   inr,
@@ -135,7 +137,33 @@ function QRCard({ order }: { order: Order }) {
 }
 
 export default function SuccessPage({ order }: { order: Order }) {
-  const { customer, setLoginOpen, nav } = useStore();
+  const { customer, setLoginOpen, nav, toast } = useStore();
+  const [paidNow, setPaidNow] = useState(false);
+  const [payingNow, setPayingNow] = useState(false);
+
+  /* customer can settle a counter order online right from here */
+  const payNow = async () => {
+    if (payingNow) return;
+    setPayingNow(true);
+    const res = await payWithRazorpay({
+      amount: order.total,
+      orderId: order.id,
+      name: order.customerName,
+      phone: order.phone,
+    });
+    setPayingNow(false);
+    if (!res.ok || !res.paymentId) {
+      if (res.reason !== "dismissed") toast("Payment adhura reh gaya — dobara try karo.", "warn");
+      return;
+    }
+    await confirmOnlinePayment(order.id, res.paymentId);
+    setPaidNow(true);
+    toast("Payment pakka! Counter ko pata chal gaya.", "ok");
+  };
+
+  const effective: Order = paidNow
+    ? { ...order, payment: "online", paid: true, paymentId: order.paymentId ?? "RZP-CHECKOUT" }
+    : order;
 
   /* confetti celebration */
   useEffect(() => {
@@ -248,7 +276,7 @@ export default function SuccessPage({ order }: { order: Order }) {
               <span className="bg-gold text-espresso-deep text-[12px] font-bold tracking-wider px-3.5 py-1.5 rounded-full">
                 DANE SE FREE
               </span>
-            ) : order.paid ? (
+            ) : order.paid || paidNow ? (
               <span className="bg-leaf text-cream text-[12px] font-bold tracking-wider px-3.5 py-1.5 rounded-full">
                 PAID ONLINE
               </span>
@@ -395,7 +423,33 @@ export default function SuccessPage({ order }: { order: Order }) {
 
         {/* right: QR */}
         <div className="lg:sticky lg:top-24 space-y-4">
-          <QRCard order={order} />
+          <QRCard order={effective} />
+
+          {/* pay online now — for counter orders */}
+          {order.payment === "counter" && !order.paid && !paidNow && (
+            <motion.button
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.85 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => void payNow()}
+              disabled={payingNow}
+              className="w-full py-3.5 rounded-2xl bg-saffron-deep text-cream font-bold flex items-center justify-center gap-2 hover:bg-espresso transition-colors disabled:opacity-60 shadow-card"
+              data-hover
+            >
+              {payingNow ? (
+                <>
+                  <span className="w-5 h-5 rounded-full border-2 border-cream/30 border-t-cream animate-spin" />
+                  Razorpay khul raha hai…
+                </>
+              ) : (
+                <>
+                  <Smartphone size={17} /> Abhi online pay karo — {inr(order.total)}
+                </>
+              )}
+            </motion.button>
+          )}
+
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

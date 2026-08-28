@@ -168,6 +168,46 @@ export async function fetchProducts(): Promise<Product[]> {
   }
 }
 
+/* ── HOSTED PAY PAGE (Razorpay exact-amount link) ──────────────────── */
+export interface PayOrder {
+  order_id: string;
+  customer_name: string;
+  phone: string;
+  total: number;
+  paid: boolean;
+  payment: string;
+  status: string;
+  pickup: string | null;
+  redeem: { reward: string; daneSpent: number } | null;
+  items: { name: string; qty: number; pack: string; price: number }[];
+}
+
+/** Fetch minimal order data for the public pay page. */
+export async function getPayOrder(orderId: string): Promise<PayOrder | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.rpc("get_pay_order", { p_order: orderId });
+    if (error || !data) return null;
+    return data as PayOrder;
+  } catch {
+    return null;
+  }
+}
+
+/** Mark an order paid after Razorpay checkout succeeds on the pay page. */
+export async function confirmOnlinePayment(orderId: string, paymentId: string): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { data, error } = await supabase.rpc("confirm_online_payment", {
+      p_order: orderId,
+      p_payment_id: paymentId,
+    });
+    return !error && data !== false;
+  } catch {
+    return false;
+  }
+}
+
 export type CatalogSource = "supabase" | "local";
 
 /** Quick health-check against the project (for the connection badge). */

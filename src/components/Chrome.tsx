@@ -328,6 +328,8 @@ export function CustomCursor() {
   const [down, setDown] = useState(false);
 
   useEffect(() => {
+    /* hide the native pointer ONLY while this custom cursor is alive */
+    document.documentElement.classList.add("has-custom-cursor");
     const move = (e: MouseEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
@@ -343,6 +345,7 @@ export function CustomCursor() {
     window.addEventListener("mousedown", dn);
     window.addEventListener("mouseup", up);
     return () => {
+      document.documentElement.classList.remove("has-custom-cursor");
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseover", over);
       window.removeEventListener("mousedown", dn);
@@ -352,17 +355,17 @@ export function CustomCursor() {
 
   return (
     <div className="custom-cursor-root pointer-events-none fixed inset-0 z-[99] hidden md:block" aria-hidden="true">
-      <motion.div className="absolute" style={{ x: dotX, y: dotY, marginLeft: -5, marginTop: -5 }}>
+      <motion.div className="absolute" style={{ x: dotX, y: dotY, marginLeft: -6, marginTop: -6 }}>
         <motion.div
           animate={{ scale: down ? 0.55 : 1 }}
-          className="w-2.5 h-2.5 rounded-full bg-cream mix-blend-difference shadow-[0_0_14px_3px_rgba(255,215,0,0.45)]"
+          className="w-3 h-3 rounded-full bg-saffron border-2 border-espresso-deep shadow-[0_0_12px_rgba(255,153,51,0.85)]"
         />
       </motion.div>
-      <motion.div className="absolute" style={{ x: ringX, y: ringY, marginLeft: -19, marginTop: -19 }}>
+      <motion.div className="absolute" style={{ x: ringX, y: ringY, marginLeft: -21, marginTop: -21 }}>
         <motion.div
-          animate={{ scale: hover ? 2.4 : 1, opacity: hover ? 0.95 : 0.5 }}
+          animate={{ scale: hover ? 1.7 : 1, opacity: hover ? 0.95 : 0.55 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="w-[38px] h-[38px] rounded-full border-[1.5px] border-cream/90 mix-blend-difference bg-cream/5"
+          className="w-[42px] h-[42px] rounded-full border-2 border-saffron-deep/80 bg-saffron/10"
         />
       </motion.div>
     </div>
