@@ -1,0 +1,7 @@
+-- ⚠️  YEH FILE PURANI HAI — ab kuch bhi yahan se mat chalaao.
+--     Admin RPCs + payment-link RPCs sab ek hi file mein hain:
+--
+--        supabase/kapila_FULL.sql
+--
+--     SQL Editor mein kapila_FULL.sql ka poora code paste karo → Run.
+--     (Re-run safe hai — purane functions drop karke fresh banenge.)

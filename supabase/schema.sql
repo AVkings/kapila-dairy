@@ -1,0 +1,7 @@
+-- ⚠️  YEH FILE PURANI HAI — ab kuch bhi yahan se mat chalaao.
+--     Poora database setup ek hi file mein hai:
+--
+--        supabase/kapila_FULL.sql
+--
+--     SQL Editor mein kapila_FULL.sql ka poora code paste karo → Run.
+--     (Re-run safe hai — purana system khud hat jayega.)
